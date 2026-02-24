@@ -53,7 +53,7 @@ function buildCss(imagePath: string): string {
         `  background-position: center;`,
         `  background-repeat: no-repeat;`,
         `  background-size: cover;`,
-        `  opacity: 0.3;`,
+        `  opacity: 0.1;`,
         `  pointer-events: none;`,
         `  z-index: 50;`,
         `}`,
