@@ -41,7 +41,9 @@ function getWorkbenchHtmlPath(): string {
 function buildCss(imagePath: string): string {
     const imageData = fs.readFileSync(imagePath);
     const base64 = imageData.toString('base64');
-    const dataUri = `data:image/png;base64,${base64}`;
+    const ext = path.extname(imagePath).toLowerCase();
+    const mimeType = ext === '.webp' ? 'image/webp' : 'image/png';
+    const dataUri = `data:${mimeType};base64,${base64}`;
     return [
         INJECTION_START,
         `.monaco-editor.focused .overflow-guard { position: relative; }`,
@@ -105,9 +107,13 @@ async function patchWorkbench(context: vscode.ExtensionContext, enable: boolean,
     }
 
     if (enable) {
-        const imagePath = path.join(context.extensionPath, 'assets', 'image.png');
-        const imageExists = await fs.promises.access(imagePath).then(() => true).catch(() => false);
-        if (!imageExists) {
+        // Prefer WebP asset; fall back to PNG if not present
+        const webpPath = path.join(context.extensionPath, 'assets', 'animated-webp-supported.webp');
+        const pngPath = path.join(context.extensionPath, 'assets', 'image.png');
+        const webpExists = await fs.promises.access(webpPath).then(() => true).catch(() => false);
+        const pngExists = await fs.promises.access(pngPath).then(() => true).catch(() => false);
+        const imagePath = webpExists ? webpPath : pngExists ? pngPath : null;
+        if (!imagePath) {
             vscode.window.showErrorMessage('Background Image: Asset not found. Please reinstall the extension.');
             return;
         }
