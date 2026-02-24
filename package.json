@@ -1,0 +1,92 @@
+{
+  "name": "vscode-ext-parkour-background",
+  "displayName": "Background Image",
+  "description": "Adds a semi-transparent cat image as the background of your code editor.",
+  "version": "0.2.0",
+  "publisher": "pdhealy",
+  "categories": [
+    "Themes",
+    "Other"
+  ],
+  "keywords": [
+    "background",
+    "image",
+    "cat",
+    "fun",
+    "personalisation",
+    "editor",
+    "theme"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/pdhealy/vscode-ext-parkour_background.git"
+  },
+  "engines": {
+    "vscode": "^1.85.0"
+  },
+  "activationEvents": [
+    "onStartupFinished"
+  ],
+  "main": "./out/extension.js",
+  "contributes": {
+    "commands": [
+      {
+        "command": "backgroundImage.toggle",
+        "title": "Background Image: Toggle"
+      }
+    ],
+    "configuration": {
+      "title": "Background Image",
+      "properties": {
+        "backgroundImage.enabled": {
+          "type": "boolean",
+          "default": false,
+          "description": "Enable or disable the cat background image in the code editor."
+        }
+      }
+    },
+    "menus": {
+      "editor/context": [
+        {
+          "command": "backgroundImage.toggle",
+          "when": "!backgroundImage.enabled",
+          "group": "navigation",
+          "title": "Enable Background Image"
+        },
+        {
+          "command": "backgroundImage.toggle",
+          "when": "backgroundImage.enabled",
+          "group": "navigation",
+          "title": "Disable Background Image"
+        }
+      ]
+    }
+  },
+  "extensionKind": [
+    "ui",
+    "workspace"
+  ],
+  "scripts": {
+    "vscode:prepublish": "npm run compile",
+    "compile": "tsc -p ./",
+    "watch": "tsc -watch -p ./",
+    "pretest": "npm run compile && npm run lint",
+    "lint": "eslint src --ext ts",
+    "test": "node ./out/test/runTest.js"
+  },
+  "devDependencies": {
+    "@types/mocha": "^10.0.6",
+    "@types/node": "18.x",
+    "@types/sinon": "^21.0.0",
+    "@types/vscode": "^1.85.0",
+    "@typescript-eslint/eslint-plugin": "^7.0.2",
+    "@typescript-eslint/parser": "^7.0.2",
+    "@vscode/test-electron": "^2.5.2",
+    "eslint": "^8.57.0",
+    "glob": "^10.3.10",
+    "mocha": "^10.2.0",
+    "sinon": "^21.0.1",
+    "typescript": "^5.3.3",
+    "typescript-eslint": "7.0.2"
+  }
+}

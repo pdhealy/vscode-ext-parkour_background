@@ -1,0 +1,19 @@
+# Compiled output
+out/
+
+# Dependencies
+node_modules/
+
+# VS Code test infrastructure
+.vscode-test/
+
+# Build artifacts
+*.vsix
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+npm-debug.log*
