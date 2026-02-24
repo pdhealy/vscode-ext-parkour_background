@@ -122,25 +122,7 @@ async function patchWorkbench(context: vscode.ExtensionContext, enable: boolean,
 
     try {
         await fs.promises.writeFile(htmlPath, html, 'utf8');
-        const checksumUpdated = await updateProductJsonChecksum(htmlPath);
-        if (!checksumUpdated && !silent) {
-            // Show how to suppress the "corrupt" warning with a terminal command
-            vscode.window.showInformationMessage(
-                'Background Image: To suppress the "Installation appears corrupt" warning, run in a terminal:',
-                'Copy Command'
-            ).then(sel => {
-                if (sel === 'Copy Command') {
-                    vscode.env.clipboard.writeText(
-                        `sudo python3 -c "import hashlib,base64,json; ` +
-                        `h=open('${htmlPath}','rb').read(); ` +
-                        `sha=base64.b64encode(hashlib.sha256(h).digest()).decode(); ` +
-                        `p=json.load(open('${path.resolve(path.dirname(htmlPath), '..', '..', '..', '..', '..', 'product.json')}')); ` +
-                        `p['checksums']['vs/code/electron-browser/workbench/workbench.html']=sha; ` +
-                        `json.dump(p,open('${path.resolve(path.dirname(htmlPath), '..', '..', '..', '..', '..', 'product.json')}','w'),indent=chr(9))"`
-                    );
-                }
-            });
-        }
+        await updateProductJsonChecksum(htmlPath);
     } catch (err: unknown) {
         if (!silent) {
             const msg = (err as NodeJS.ErrnoException).code === 'EACCES'
@@ -153,14 +135,11 @@ async function patchWorkbench(context: vscode.ExtensionContext, enable: boolean,
 
     if (!silent) {
         const state = enable ? 'enabled' : 'disabled';
-        vscode.window.showInformationMessage(
-            `Background image ${state}. VSCode may show an "installation appears corrupt" warning — this is expected and safe to dismiss.`,
-            'Reload Now'
-        ).then(selection => {
-            if (selection === 'Reload Now') {
-                vscode.commands.executeCommand('workbench.action.reloadWindow');
-            }
-        });
+        vscode.window.showInformationMessage(`Background image ${state}. Reloading VSCode...`);
+        // Small delay so the notification is briefly visible before reload
+        setTimeout(() => {
+            vscode.commands.executeCommand('workbench.action.reloadWindow');
+        }, 1000);
     }
 }
 
