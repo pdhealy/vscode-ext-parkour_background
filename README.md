@@ -1,19 +1,15 @@
-# Background Image
+# Parkour Background
 
-Add a semi-transparent cat image as the background of your VS Code editor — a fun, lightweight way to personalise your coding environment.
-
-![Background Image preview](assets/image.png)
+Add a semi-transparent Minecraft or Subway Surfers background image to your VS Code editor — a fun, lightweight way to personalise your coding environment.
 
 ## Features
 
-- 🐱 Displays a cat image at 30% opacity behind your editor text
-- ✅ Code remains fully legible — only the background is faded
-- ⚡ Toggle on/off instantly via three methods:
-  - **Command Palette** (`Ctrl+Shift+P` → `Background Image: Toggle`)
-  - **Settings** (`backgroundImage.enabled`)
-  - **Editor context menu** (right-click in the editor)
-- 💾 Your preference is remembered across VS Code sessions
-- 🎯 Background appears in the code editor only — sidebar, terminal, and status bar are unaffected
+- 🎮 Choose between **Minecraft** or **Subway Surfers** background themes
+- 🖼️ Background is randomly selected from a pool of images each time you toggle it on
+- ✅ Code remains fully legible — background is rendered behind editor text at low opacity
+- ⚡ Toggle on/off via **Command Palette** or **editor context menu**
+- 🎚️ Adjustable opacity (5% / 10% / 15% / 25%) via `Parkour Background: Set Opacity`
+- 🔄 Background resets to default on every VSCode restart — re-toggle to apply
 
 ## Requirements
 
@@ -23,66 +19,60 @@ Visual Studio Code version 1.85.0 or later. No additional extensions required.
 
 ## Installation
 
-1. Install **Background Image** from the [VS Code Marketplace](https://marketplace.visualstudio.com).
-2. Enable the background image using any of the methods below.
+1. Install **Parkour Background** from the [VS Code Marketplace](https://marketplace.visualstudio.com).
+2. Enable a background theme using the Command Palette (see Usage below).
 
 ## Usage
 
-### Enable / Disable
+### Toggle Background On/Off
 
-**Option A — Command Palette**
-1. Press `Ctrl+Shift+P` (macOS: `Cmd+Shift+P`)
-2. Type `Background Image: Toggle` and press `Enter`
+**Command Palette** (`Ctrl+Shift+P` / `Cmd+Shift+P`):
+- `Parkour Background (Minecraft): Toggle On/Off`
+- `Parkour Background (Subway Surfers): Toggle On/Off`
 
-**Option B — Settings**
-1. Open Settings (`Ctrl+,`)
-2. Search for `Background Image`
-3. Tick or untick **Background Image: Enabled**
+**Editor Context Menu** (right-click inside the editor):
+- **Enable / Disable Parkour Background (Minecraft)**
+- **Enable / Disable Parkour Background (Subway Surfers)**
 
-**Option C — Context Menu**
-1. Right-click anywhere inside the code editor
-2. Select **Enable Background Image** or **Disable Background Image**
+After toggling, VSCode will reload automatically to apply the change.
 
-After toggling, VS Code will prompt you to **Reload Now** to apply the change.
+> The background resets to default on every VSCode restart. Toggle it on again after reloading.
+
+### Set Opacity
+
+**Command Palette** → `Parkour Background: Set Opacity`
+
+Choose from:
+| Option | Opacity |
+|--------|---------|
+| 5% — Subtle | Very faint |
+| 10% — Low | Barely noticeable |
+| 15% — Default | Balanced |
+| 25% — High | Clearly visible |
 
 ## Extension Settings
 
 | Setting | Type | Default | Description |
 |---------|------|---------|-------------|
-| `backgroundImage.enabled` | `boolean` | `false` | Enable or disable the cat background image in the code editor. |
+| `backgroundImage.activeTheme` | `string` | `"none"` | Active theme: `"none"`, `"minecraft"`, or `"subwaysurfers"`. |
 
 ## Troubleshooting
 
 **Background image does not appear after enabling**
-- VS Code reloads automatically after toggling (click **Reload Now** in the notification). If it doesn't reload, run `Ctrl+Shift+P` → **Developer: Reload Window**.
-- On Linux/macOS, if you see a permission error, try running VS Code with `sudo code --no-sandbox` once to apply the patch, then restart normally.
+- VSCode reloads automatically after toggling. If it doesn't reload, run `Ctrl+Shift+P` → **Developer: Reload Window**.
+- On Linux/macOS, if you see a permission error, try running VSCode with `sudo code --no-sandbox` once to apply the patch, then restart normally.
 
 **"Installation appears corrupt" warning**
-- This is expected. The extension injects CSS into VS Code's editor, which triggers VS Code's integrity check. Click **"Don't Show Again"** to permanently dismiss the notification.
-- To fully suppress the warning (optional), run the following once in a terminal with `sudo`:
-  ```bash
-  sudo python3 -c "
-  import hashlib, base64, json
-  html = open('/usr/share/code/resources/app/out/vs/code/electron-browser/workbench/workbench.html','rb').read()
-  sha = base64.b64encode(hashlib.sha256(html).digest()).decode()
-  p = json.load(open('/usr/share/code/resources/app/product.json'))
-  p['checksums']['vs/code/electron-browser/workbench/workbench.html'] = sha
-  json.dump(p, open('/usr/share/code/resources/app/product.json','w'), indent=chr(9))
-  print('Checksum updated.')
-  "
-  ```
+- This is expected. The extension injects CSS into VSCode's workbench, which triggers VSCode's integrity check. Click **"Don't Show Again"** to permanently dismiss the notification.
 
 **Context menu item is missing**
 - Right-click must be performed inside the editor text area, not on the tab bar or scrollbar.
-- Ensure VS Code is version 1.85.0 or later.
-
-**Setting change does not apply immediately**
-- Confirm you are not overriding the setting at both User and Workspace scope. Workspace settings take precedence.
+- Ensure VSCode is version 1.85.0 or later.
 
 ## Known Limitations
 
-- The "installation appears corrupt" warning in the title bar cannot be avoided — it is triggered whenever VSCode's core files are modified, which is required for background image injection.
-- The background image is the same for all users (custom images are not supported in this version).
+- The "installation appears corrupt" warning cannot be avoided — it is triggered whenever VSCode's core files are modified.
+- The background image resets on every VSCode restart by design.
 
 ## Release Notes
 
@@ -90,4 +80,4 @@ See [CHANGELOG.md](CHANGELOG.md) for the full change history.
 
 ---
 
-**Enjoy your cat-powered coding environment! 🐱**
+**Enjoy your parkour-powered coding environment! 🎮**

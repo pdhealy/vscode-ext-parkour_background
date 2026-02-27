@@ -1,7 +1,7 @@
 {
   "name": "vscode-ext-parkour-background",
-  "displayName": "Background Image",
-  "description": "Adds a semi-transparent cat image as the background of your code editor.",
+  "displayName": "Parkour Background",
+  "description": "Adds a semi-transparent Minecraft or Subway Surfers background image to your VS Code editor.",
   "version": "0.2.0",
   "publisher": "pdhealy",
   "categories": [
@@ -11,7 +11,9 @@
   "keywords": [
     "background",
     "image",
-    "cat",
+    "minecraft",
+    "subway surfers",
+    "parkour",
     "fun",
     "personalisation",
     "editor",
@@ -32,19 +34,19 @@
     "commands": [
       {
         "command": "backgroundImage.toggleMinecraft",
-        "title": "Background Image (Minecraft): Toggle"
+        "title": "Parkour Background (Minecraft): Toggle On/Off"
       },
       {
         "command": "backgroundImage.toggleSubwaySurfers",
-        "title": "Background Image (Subway Surfers): Toggle"
+        "title": "Parkour Background (Subway Surfers): Toggle On/Off"
       },
       {
         "command": "backgroundImage.setOpacity",
-        "title": "Background Image: Set Opacity"
+        "title": "Parkour Background: Set Opacity"
       }
     ],
     "configuration": {
-      "title": "Background Image",
+      "title": "Parkour Background",
       "properties": {
         "backgroundImage.activeTheme": {
           "type": "string",
@@ -60,25 +62,25 @@
           "command": "backgroundImage.toggleMinecraft",
           "when": "!backgroundImage.minecraftEnabled",
           "group": "navigation",
-          "title": "Enable Background Image (Minecraft)"
+          "title": "Enable Parkour Background (Minecraft)"
         },
         {
           "command": "backgroundImage.toggleMinecraft",
           "when": "backgroundImage.minecraftEnabled",
           "group": "navigation",
-          "title": "Disable Background Image (Minecraft)"
+          "title": "Disable Parkour Background (Minecraft)"
         },
         {
           "command": "backgroundImage.toggleSubwaySurfers",
           "when": "!backgroundImage.subwaySurfersEnabled",
           "group": "navigation",
-          "title": "Enable Background Image (Subway Surfers)"
+          "title": "Enable Parkour Background (Subway Surfers)"
         },
         {
           "command": "backgroundImage.toggleSubwaySurfers",
           "when": "backgroundImage.subwaySurfersEnabled",
           "group": "navigation",
-          "title": "Disable Background Image (Subway Surfers)"
+          "title": "Disable Parkour Background (Subway Surfers)"
         }
       ]
     }

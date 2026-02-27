@@ -104,7 +104,7 @@ async function patchWorkbench(context: vscode.ExtensionContext, theme: 'minecraf
         html = await fs.promises.readFile(htmlPath, 'utf8');
     } catch {
         if (!silent) {
-            vscode.window.showErrorMessage('Background Image: Could not read VSCode workbench file.');
+            vscode.window.showErrorMessage('Parkour Background: Could not read VSCode workbench file.');
         }
         return;
     }
@@ -128,7 +128,7 @@ async function patchWorkbench(context: vscode.ExtensionContext, theme: 'minecraf
         if (!imagePath) {
             if (!silent) {
                 const themeLabel = theme === 'minecraft' ? 'Minecraft' : 'Subway Surfers';
-                vscode.window.showErrorMessage(`Background Image: Failed to load ${themeLabel} background image. No images found in the assets folder.`);
+                vscode.window.showErrorMessage(`Parkour Background: Failed to load ${themeLabel} background image. No images found in the assets folder.`);
             }
             return;
         }
@@ -147,8 +147,8 @@ async function patchWorkbench(context: vscode.ExtensionContext, theme: 'minecraf
     } catch (err: unknown) {
         if (!silent) {
             const msg = (err as NodeJS.ErrnoException).code === 'EACCES'
-                ? 'Background Image: Permission denied writing to VSCode. Try running VSCode as administrator.'
-                : `Background Image: Failed to patch VSCode — ${err}`;
+                ? 'Parkour Background: Permission denied writing to VSCode. Try running VSCode as administrator.'
+                : `Parkour Background: Failed to patch VSCode — ${err}`;
             vscode.window.showErrorMessage(msg);
         }
         return;
@@ -156,7 +156,7 @@ async function patchWorkbench(context: vscode.ExtensionContext, theme: 'minecraf
 
     if (!silent) {
         const state = theme !== null ? 'enabled' : 'disabled';
-        vscode.window.showInformationMessage(`Background image ${state}. Reloading VSCode...`);
+        vscode.window.showInformationMessage(`Parkour Background ${state}. Reloading VSCode...`);
         // Small delay so the notification is briefly visible before reload
         setTimeout(() => {
             vscode.commands.executeCommand('workbench.action.reloadWindow');
@@ -171,8 +171,8 @@ function updateMenuContext(minecraftEnabled: boolean, subwayEnabled: boolean): v
 
 export async function activate(context: vscode.ExtensionContext): Promise<void> {
     _context = context;
-    console.log(`[Background Image] appRoot: ${vscode.env.appRoot}`);
-    console.log(`[Background Image] workbench path: ${getWorkbenchHtmlPath()}`);
+    console.log(`[Parkour Background] appRoot: ${vscode.env.appRoot}`);
+    console.log(`[Parkour Background] workbench path: ${getWorkbenchHtmlPath()}`);
 
     context.subscriptions.push(vscode.commands.registerCommand('backgroundImage.toggleMinecraft', async () => {
         const config = vscode.workspace.getConfiguration('backgroundImage');
@@ -225,18 +225,11 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
         }
     }));
 
-    // Apply stored state on startup
-    const config = vscode.workspace.getConfiguration('backgroundImage');
-    const theme = config.get<string>('activeTheme', 'none');
-    updateMenuContext(theme === 'minecraft', theme === 'subwaysurfers');
-    // Sync workbench patch with stored setting on every startup (silent — no reload prompt)
-    if (theme === 'minecraft') {
-        await patchWorkbench(context, 'minecraft', true);
-    } else if (theme === 'subwaysurfers') {
-        await patchWorkbench(context, 'subwaysurfers', true);
-    } else {
-        await patchWorkbench(context, null, true);
-    }
+    // On startup, always remove any background injection and reset menu context.
+    // We do NOT update the config here to avoid firing onDidChangeConfiguration
+    // and triggering an unwanted reload loop.
+    updateMenuContext(false, false);
+    await patchWorkbench(context, null, true);
 }
 
 export function deactivate(): void {
