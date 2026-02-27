@@ -1,6 +1,11 @@
-# Compiled output
+# Ignore files and directories
 out/
 docs/
+
+# Temporary ignore files and directories (to be deleted)
+tmp/
+minecraft/
+subwaysurfers/
 
 # Dependencies
 node_modules/
