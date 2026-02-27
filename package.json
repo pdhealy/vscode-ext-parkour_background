@@ -2,8 +2,17 @@
   "name": "vscode-ext-parkour-background",
   "displayName": "Parkour Background",
   "description": "Adds a semi-transparent Minecraft or Subway Surfers background image to your VS Code editor.",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "publisher": "pdhealy",
+  "license": "MIT",
+  "homepage": "https://github.com/pdhealy/vscode-ext-parkour_background#readme",
+  "bugs": {
+    "url": "https://github.com/pdhealy/vscode-ext-parkour_background/issues"
+  },
+  "galleryBanner": {
+    "color": "#1a1a2e",
+    "theme": "dark"
+  },
   "categories": [
     "Themes",
     "Other"

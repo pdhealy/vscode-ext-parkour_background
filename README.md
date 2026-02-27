@@ -2,6 +2,8 @@
 
 Add a semi-transparent Minecraft or Subway Surfers background image to your VS Code editor — a fun, lightweight way to personalise your coding environment.
 
+![Parkour Background screenshot](https://raw.githubusercontent.com/pdhealy/vscode-ext-parkour_background/main/docs/screenshots/image.png)
+
 ## Features
 
 - 🎮 Choose between **Minecraft** or **Subway Surfers** background themes

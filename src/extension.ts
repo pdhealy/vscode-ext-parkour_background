@@ -8,8 +8,6 @@ const STYLE_ID = 'editor-background-image';
 const INJECTION_START = `<style id="${STYLE_ID}">`;
 const INJECTION_END = `</style><!-- /${STYLE_ID} -->`;
 
-let _context: vscode.ExtensionContext | undefined;
-
 function getWorkbenchHtmlPath(): string {
     const fromAppRoot = path.join(
         vscode.env.appRoot,
@@ -170,9 +168,6 @@ function updateMenuContext(minecraftEnabled: boolean, subwayEnabled: boolean): v
 }
 
 export async function activate(context: vscode.ExtensionContext): Promise<void> {
-    _context = context;
-    console.log(`[Parkour Background] appRoot: ${vscode.env.appRoot}`);
-    console.log(`[Parkour Background] workbench path: ${getWorkbenchHtmlPath()}`);
 
     context.subscriptions.push(vscode.commands.registerCommand('backgroundImage.toggleMinecraft', async () => {
         const config = vscode.workspace.getConfiguration('backgroundImage');
