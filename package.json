@@ -3,7 +3,11 @@
   "displayName": "Parkour Background",
   "description": "Adds a semi-transparent Minecraft or Subway Surfers background image to your VS Code editor.",
   "version": "0.3.0",
-  "publisher": "pdhealy",
+  "publisher": "paulhealydev",
+  "author": {
+    "name": "paulhealy.dev",
+    "url": "https://paulhealy.dev"
+  },
   "license": "MIT",
   "homepage": "https://github.com/pdhealy/vscode-ext-parkour_background#readme",
   "bugs": {
@@ -59,7 +63,11 @@
       "properties": {
         "backgroundImage.activeTheme": {
           "type": "string",
-          "enum": ["none", "minecraft", "subwaysurfers"],
+          "enum": [
+            "none",
+            "minecraft",
+            "subwaysurfers"
+          ],
           "default": "none",
           "description": "The active background image theme. Set to 'minecraft' or 'subwaysurfers' to enable, 'none' to disable."
         }
@@ -114,6 +122,7 @@
     "@typescript-eslint/eslint-plugin": "^7.0.2",
     "@typescript-eslint/parser": "^7.0.2",
     "@vscode/test-electron": "^2.5.2",
+    "@vscode/vsce": "^3.7.1",
     "eslint": "^8.57.0",
     "glob": "^10.3.10",
     "mocha": "^10.2.0",
