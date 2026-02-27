@@ -57,8 +57,8 @@ function buildCss(imagePath: string, opacity: number): string {
     const dataUri = `data:${mimeType};base64,${base64}`;
     return [
         INJECTION_START,
-        `.monaco-editor.focused .overflow-guard { position: relative; }`,
-        `.monaco-editor.focused .overflow-guard::before {`,
+        `.editor-group-container.active .monaco-editor .overflow-guard { position: relative; }`,
+        `.editor-group-container.active .monaco-editor .overflow-guard::before {`,
         `  content: '';`,
         `  position: absolute;`,
         `  top: 0; left: 0; right: 0; bottom: 0;`,
@@ -225,11 +225,17 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
         }
     }));
 
-    // On startup, always remove any background injection and reset menu context.
-    // We do NOT update the config here to avoid firing onDidChangeConfiguration
-    // and triggering an unwanted reload loop.
-    updateMenuContext(false, false);
-    await patchWorkbench(context, null, true);
+    // Re-apply stored theme on startup (silent — no reload prompt)
+    const config = vscode.workspace.getConfiguration('backgroundImage');
+    const theme = config.get<string>('activeTheme', 'none');
+    updateMenuContext(theme === 'minecraft', theme === 'subwaysurfers');
+    if (theme === 'minecraft') {
+        await patchWorkbench(context, 'minecraft', true);
+    } else if (theme === 'subwaysurfers') {
+        await patchWorkbench(context, 'subwaysurfers', true);
+    } else {
+        await patchWorkbench(context, null, true);
+    }
 }
 
 export function deactivate(): void {
