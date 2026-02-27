@@ -3,7 +3,7 @@ import * as fs from 'fs';
 import * as path from 'path';
 import * as crypto from 'crypto';
 
-const CONFIG_KEY = 'backgroundImage.enabled';
+const CONFIG_KEY = 'backgroundImage.activeTheme';
 const STYLE_ID = 'editor-background-image';
 const INJECTION_START = `<style id="${STYLE_ID}">`;
 const INJECTION_END = `</style><!-- /${STYLE_ID} -->`;
@@ -38,7 +38,18 @@ function getWorkbenchHtmlPath(): string {
     return fromAppRoot;
 }
 
-function buildCss(imagePath: string): string {
+function getRandomWebpFromFolder(folderPath: string): string | null {
+    try {
+        const files = fs.readdirSync(folderPath).filter(f => f.toLowerCase().endsWith('.webp'));
+        if (files.length === 0) { return null; }
+        const idx = Math.floor(Math.random() * files.length);
+        return path.join(folderPath, files[idx]);
+    } catch {
+        return null;
+    }
+}
+
+function buildCss(imagePath: string, opacity: number): string {
     const imageData = fs.readFileSync(imagePath);
     const base64 = imageData.toString('base64');
     const ext = path.extname(imagePath).toLowerCase();
@@ -55,7 +66,7 @@ function buildCss(imagePath: string): string {
         `  background-position: center;`,
         `  background-repeat: no-repeat;`,
         `  background-size: cover;`,
-        `  opacity: 0.05;`,
+        `  opacity: ${opacity};`,
         `  pointer-events: none;`,
         `  z-index: 50;`,
         `}`,
@@ -85,7 +96,7 @@ async function updateProductJsonChecksum(htmlPath: string): Promise<boolean> {
     }
 }
 
-async function patchWorkbench(context: vscode.ExtensionContext, enable: boolean, silent = false): Promise<void> {
+async function patchWorkbench(context: vscode.ExtensionContext, theme: 'minecraft' | 'subwaysurfers' | null, silent = false): Promise<void> {
     const htmlPath = getWorkbenchHtmlPath();
     let html: string;
 
@@ -106,20 +117,24 @@ async function patchWorkbench(context: vscode.ExtensionContext, enable: boolean,
         html = html.slice(0, startIdx).trimEnd() + '\n\t' + html.slice(endIdx + INJECTION_END.length).trimStart();
     }
 
-    if (enable) {
-        // Prefer WebP asset; fall back to PNG if not present
-        const webpPath = path.join(context.extensionPath, 'assets', 'animated-webp-supported.webp');
-        const pngPath = path.join(context.extensionPath, 'assets', 'image.png');
-        const webpExists = await fs.promises.access(webpPath).then(() => true).catch(() => false);
-        const pngExists = await fs.promises.access(pngPath).then(() => true).catch(() => false);
-        const imagePath = webpExists ? webpPath : pngExists ? pngPath : null;
+    if (theme !== null) {
+        // Skip re-injection on startup if already injected (avoid redundant disk writes)
+        if (alreadyInjected && silent) { return; }
+
+        const folderName = theme === 'minecraft' ? 'minecraft' : 'subwaysurfers';
+        const folderPath = path.join(context.extensionPath, 'assets', folderName);
+        const imagePath = getRandomWebpFromFolder(folderPath);
+
         if (!imagePath) {
-            vscode.window.showErrorMessage('Background Image: Asset not found. Please reinstall the extension.');
+            if (!silent) {
+                const themeLabel = theme === 'minecraft' ? 'Minecraft' : 'Subway Surfers';
+                vscode.window.showErrorMessage(`Background Image: Failed to load ${themeLabel} background image. No images found in the assets folder.`);
+            }
             return;
         }
-        const injection = buildCss(imagePath);
-        // Skip writing if already correctly injected (avoid redundant disk writes on startup)
-        if (alreadyInjected && silent) { return; }
+
+        const opacity = context.globalState.get<number>('backgroundImage.opacity', 0.15);
+        const injection = buildCss(imagePath, Math.min(0.25, Math.max(0.05, opacity)));
         html = html.replace('</head>', `${injection}\n\t</head>`);
     } else {
         // If nothing was injected, nothing to do
@@ -140,7 +155,7 @@ async function patchWorkbench(context: vscode.ExtensionContext, enable: boolean,
     }
 
     if (!silent) {
-        const state = enable ? 'enabled' : 'disabled';
+        const state = theme !== null ? 'enabled' : 'disabled';
         vscode.window.showInformationMessage(`Background image ${state}. Reloading VSCode...`);
         // Small delay so the notification is briefly visible before reload
         setTimeout(() => {
@@ -149,36 +164,79 @@ async function patchWorkbench(context: vscode.ExtensionContext, enable: boolean,
     }
 }
 
-function updateMenuContext(enabled: boolean): void {
-    vscode.commands.executeCommand('setContext', 'backgroundImage.enabled', enabled);
+function updateMenuContext(minecraftEnabled: boolean, subwayEnabled: boolean): void {
+    vscode.commands.executeCommand('setContext', 'backgroundImage.minecraftEnabled', minecraftEnabled);
+    vscode.commands.executeCommand('setContext', 'backgroundImage.subwaySurfersEnabled', subwayEnabled);
 }
 
 export async function activate(context: vscode.ExtensionContext): Promise<void> {
     _context = context;
     console.log(`[Background Image] appRoot: ${vscode.env.appRoot}`);
     console.log(`[Background Image] workbench path: ${getWorkbenchHtmlPath()}`);
-    const disposable = vscode.commands.registerCommand('backgroundImage.toggle', async () => {
+
+    context.subscriptions.push(vscode.commands.registerCommand('backgroundImage.toggleMinecraft', async () => {
         const config = vscode.workspace.getConfiguration('backgroundImage');
-        const current = config.get<boolean>('enabled', false);
-        await config.update('enabled', !current, vscode.ConfigurationTarget.Global);
-    });
-    context.subscriptions.push(disposable);
+        const current = config.get<string>('activeTheme', 'none');
+        await config.update('activeTheme', current === 'minecraft' ? 'none' : 'minecraft', vscode.ConfigurationTarget.Global);
+    }));
+
+    context.subscriptions.push(vscode.commands.registerCommand('backgroundImage.toggleSubwaySurfers', async () => {
+        const config = vscode.workspace.getConfiguration('backgroundImage');
+        const current = config.get<string>('activeTheme', 'none');
+        await config.update('activeTheme', current === 'subwaysurfers' ? 'none' : 'subwaysurfers', vscode.ConfigurationTarget.Global);
+    }));
 
     context.subscriptions.push(vscode.workspace.onDidChangeConfiguration(async (e) => {
+        const config = vscode.workspace.getConfiguration('backgroundImage');
+        const theme = config.get<string>('activeTheme', 'none');
         if (e.affectsConfiguration(CONFIG_KEY)) {
-            const config = vscode.workspace.getConfiguration('backgroundImage');
-            const enabled = config.get<boolean>('enabled', false);
-            updateMenuContext(enabled);
-            await patchWorkbench(context, enabled);
+            updateMenuContext(theme === 'minecraft', theme === 'subwaysurfers');
+            if (theme === 'minecraft') {
+                await patchWorkbench(context, 'minecraft');
+            } else if (theme === 'subwaysurfers') {
+                await patchWorkbench(context, 'subwaysurfers');
+            } else {
+                await patchWorkbench(context, null);
+            }
+        }
+    }));
+
+    context.subscriptions.push(vscode.commands.registerCommand('backgroundImage.setOpacity', async () => {
+        const PRESETS = [
+            { label: '5% — Subtle',   value: 0.05 },
+            { label: '10% — Low',     value: 0.10 },
+            { label: '15% — Default', value: 0.15 },
+            { label: '25% — High',    value: 0.25 },
+        ];
+        const current = context.globalState.get<number>('backgroundImage.opacity', 0.15);
+        const items = PRESETS.map(p => ({
+            label: p.label,
+            description: p.value === current ? '(current)' : undefined,
+            value: p.value,
+        }));
+        const picked = await vscode.window.showQuickPick(items, {
+            placeHolder: 'Select background image opacity',
+        });
+        if (!picked) { return; }
+        await context.globalState.update('backgroundImage.opacity', picked.value);
+        const theme = vscode.workspace.getConfiguration('backgroundImage').get<string>('activeTheme', 'none');
+        if (theme === 'minecraft' || theme === 'subwaysurfers') {
+            await patchWorkbench(context, theme);
         }
     }));
 
     // Apply stored state on startup
     const config = vscode.workspace.getConfiguration('backgroundImage');
-    const initialEnabled = config.get<boolean>('enabled', false);
-    updateMenuContext(initialEnabled);
+    const theme = config.get<string>('activeTheme', 'none');
+    updateMenuContext(theme === 'minecraft', theme === 'subwaysurfers');
     // Sync workbench patch with stored setting on every startup (silent — no reload prompt)
-    await patchWorkbench(context, initialEnabled, true);
+    if (theme === 'minecraft') {
+        await patchWorkbench(context, 'minecraft', true);
+    } else if (theme === 'subwaysurfers') {
+        await patchWorkbench(context, 'subwaysurfers', true);
+    } else {
+        await patchWorkbench(context, null, true);
+    }
 }
 
 export function deactivate(): void {

@@ -31,33 +31,54 @@
   "contributes": {
     "commands": [
       {
-        "command": "backgroundImage.toggle",
-        "title": "Background Image: Toggle"
+        "command": "backgroundImage.toggleMinecraft",
+        "title": "Background Image (Minecraft): Toggle"
+      },
+      {
+        "command": "backgroundImage.toggleSubwaySurfers",
+        "title": "Background Image (Subway Surfers): Toggle"
+      },
+      {
+        "command": "backgroundImage.setOpacity",
+        "title": "Background Image: Set Opacity"
       }
     ],
     "configuration": {
       "title": "Background Image",
       "properties": {
-        "backgroundImage.enabled": {
-          "type": "boolean",
-          "default": false,
-          "description": "Enable or disable the cat background image in the code editor."
+        "backgroundImage.activeTheme": {
+          "type": "string",
+          "enum": ["none", "minecraft", "subwaysurfers"],
+          "default": "none",
+          "description": "The active background image theme. Set to 'minecraft' or 'subwaysurfers' to enable, 'none' to disable."
         }
       }
     },
     "menus": {
       "editor/context": [
         {
-          "command": "backgroundImage.toggle",
-          "when": "!backgroundImage.enabled",
+          "command": "backgroundImage.toggleMinecraft",
+          "when": "!backgroundImage.minecraftEnabled",
           "group": "navigation",
-          "title": "Enable Background Image"
+          "title": "Enable Background Image (Minecraft)"
         },
         {
-          "command": "backgroundImage.toggle",
-          "when": "backgroundImage.enabled",
+          "command": "backgroundImage.toggleMinecraft",
+          "when": "backgroundImage.minecraftEnabled",
           "group": "navigation",
-          "title": "Disable Background Image"
+          "title": "Disable Background Image (Minecraft)"
+        },
+        {
+          "command": "backgroundImage.toggleSubwaySurfers",
+          "when": "!backgroundImage.subwaySurfersEnabled",
+          "group": "navigation",
+          "title": "Enable Background Image (Subway Surfers)"
+        },
+        {
+          "command": "backgroundImage.toggleSubwaySurfers",
+          "when": "backgroundImage.subwaySurfersEnabled",
+          "group": "navigation",
+          "title": "Disable Background Image (Subway Surfers)"
         }
       ]
     }
@@ -68,8 +89,8 @@
   ],
   "scripts": {
     "vscode:prepublish": "npm run compile",
-    "compile": "tsc -p ./",
-    "watch": "tsc -watch -p ./",
+    "compile": "node node_modules/typescript/bin/tsc -p ./",
+    "watch": "node node_modules/typescript/bin/tsc -watch -p ./",
     "pretest": "npm run compile && npm run lint",
     "lint": "eslint src --ext ts",
     "test": "node ./out/test/runTest.js"

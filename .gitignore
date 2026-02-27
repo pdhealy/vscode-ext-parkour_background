@@ -1,11 +1,8 @@
-# Ignore files and directories
+# Compiled output
 out/
-docs/
 
-# Temporary ignore files and directories (to be deleted)
-tmp/
-minecraft/
-subwaysurfers/
+# Documentation
+docs/
 
 # Dependencies
 node_modules/
@@ -13,8 +10,11 @@ node_modules/
 # VS Code test infrastructure
 .vscode-test/
 
-# Build artifacts
+# Packaged extension
 *.vsix
+
+# Build cache
+.eslintcache
 
 # OS
 .DS_Store
@@ -23,3 +23,12 @@ Thumbs.db
 # Logs
 *.log
 npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Env files
+.env
+.env.*
+
+# Temporary files
+assets/tmp/
