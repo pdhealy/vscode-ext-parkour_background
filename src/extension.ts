@@ -2,38 +2,53 @@ import * as vscode from 'vscode';
 import * as fs from 'fs';
 import * as path from 'path';
 import * as crypto from 'crypto';
+import * as os from 'os';
+import * as cp from 'child_process';
 
 const CONFIG_KEY = 'backgroundImage.activeTheme';
+
+// True only in the window that ran a toggle/setOpacity command — prevents other
+// windows from patching workbench.html and reloading when the global config changes.
+let _localConfigChange = false;
 const STYLE_ID = 'editor-background-image';
 const INJECTION_START = `<style id="${STYLE_ID}">`;
 const INJECTION_END = `</style><!-- /${STYLE_ID} -->`;
 
 function getWorkbenchHtmlPath(): string {
-    const fromAppRoot = path.join(
-        vscode.env.appRoot,
-        'out', 'vs', 'code', 'electron-browser', 'workbench', 'workbench.html'
-    );
-    if (fs.existsSync(fromAppRoot)) {
-        return fromAppRoot;
-    }
-
-    // In Remote SSH the extension host appRoot is the VS Code Server, not the
-    // desktop Electron app. Fall back to known system installation paths.
-    const systemPaths = [
-        '/usr/share/code/resources/app/out/vs/code/electron-browser/workbench/workbench.html',
-        '/usr/lib/code/resources/app/out/vs/code/electron-browser/workbench/workbench.html',
-        '/opt/visual-studio-code/resources/app/out/vs/code/electron-browser/workbench/workbench.html',
-        path.join(process.env.HOME || '', 'Applications/Visual Studio Code.app/Contents/Resources/app/out/vs/code/electron-browser/workbench/workbench.html'),
+    // VS Code 1.70+ uses electron-sandbox; older builds used electron-browser.
+    const subPaths = [
+        ['out', 'vs', 'code', 'electron-sandbox', 'workbench', 'workbench.html'],
+        ['out', 'vs', 'code', 'electron-browser', 'workbench', 'workbench.html'],
     ];
 
-    for (const p of systemPaths) {
+    for (const parts of subPaths) {
+        const p = path.join(vscode.env.appRoot, ...parts);
         if (fs.existsSync(p)) {
             return p;
         }
     }
 
-    // Return the appRoot-derived path so the caller receives a meaningful error
-    return fromAppRoot;
+    // In Remote SSH the extension host appRoot is the VS Code Server, not the
+    // desktop Electron app. Fall back to known system installation paths.
+    const appRoots = [
+        '/usr/share/code/resources/app',
+        '/usr/lib/code/resources/app',
+        '/opt/visual-studio-code/resources/app',
+        '/Applications/Visual Studio Code.app/Contents/Resources/app',
+        path.join(process.env.HOME || '', 'Applications/Visual Studio Code.app/Contents/Resources/app'),
+    ];
+
+    for (const root of appRoots) {
+        for (const parts of subPaths) {
+            const p = path.join(root, ...parts);
+            if (fs.existsSync(p)) {
+                return p;
+            }
+        }
+    }
+
+    // Return the modern appRoot-derived path so the caller receives a meaningful error
+    return path.join(vscode.env.appRoot, ...subPaths[0]);
 }
 
 function getRandomWebpFromFolder(folderPath: string): string | null {
@@ -74,23 +89,49 @@ function buildCss(imagePath: string, opacity: number): string {
 
 async function updateProductJsonChecksum(htmlPath: string): Promise<boolean> {
     // product.json lives at the VSCode app root, 5 levels up from workbench.html
-    // .../resources/app/out/vs/code/electron-browser/workbench/workbench.html
-    //                  ^^^--- 5 `..` = app root
     const productPath = path.resolve(path.dirname(htmlPath), '..', '..', '..', '..', '..', 'product.json');
 
     try {
         const htmlData = await fs.promises.readFile(htmlPath);
-        const sha256 = crypto.createHash('sha256').update(htmlData).digest('base64');
+        // VS Code's build toolchain hashes with MD5+base64 — must match exactly.
+        const sha256 = crypto.createHash('md5').update(htmlData).digest('base64');
         const productRaw = await fs.promises.readFile(productPath, 'utf8');
         const product = JSON.parse(productRaw);
-        const key = 'vs/code/electron-browser/workbench/workbench.html';
-        if (product.checksums && product.checksums[key] !== sha256) {
-            product.checksums[key] = sha256;
-            await fs.promises.writeFile(productPath, JSON.stringify(product, null, '\t'), 'utf8');
+
+        if (!product.checksums) { return true; } // no integrity checks in this build
+
+        // Derive the key from the actual path relative to the app's `out/` directory.
+        // e.g. out/vs/code/electron-sandbox/workbench/workbench.html → vs/code/electron-sandbox/...
+        const appOutDir = path.resolve(path.dirname(htmlPath), '..', '..', '..', '..', '..', 'out');
+        const key = path.relative(appOutDir, htmlPath).split(path.sep).join('/');
+
+        if (product.checksums[key] === sha256) { return true; } // already correct
+
+        product.checksums[key] = sha256;
+        const newContent = JSON.stringify(product, null, '\t');
+
+        try {
+            await fs.promises.writeFile(productPath, newContent, 'utf8');
+        } catch (writeErr) {
+            if ((writeErr as NodeJS.ErrnoException).code !== 'EACCES' || process.platform !== 'darwin') {
+                throw writeErr;
+            }
+            // macOS: product.json is inside the app bundle and may be owned by root.
+            // Use osascript to rewrite it with administrator privileges (shows native password prompt).
+            const tmpPath = path.join(os.tmpdir(), `vscode-product-${Date.now()}.json`);
+            await fs.promises.writeFile(tmpPath, newContent, 'utf8');
+            try {
+                cp.execFileSync('osascript', [
+                    '-e',
+                    `do shell script "cp " & quoted form of "${tmpPath}" & " " & quoted form of "${productPath}" with administrator privileges`,
+                ]);
+            } finally {
+                await fs.promises.unlink(tmpPath).catch(() => {});
+            }
         }
         return true;
     } catch {
-        return false; // product.json not writable (requires elevated permissions)
+        return false;
     }
 }
 
@@ -98,11 +139,16 @@ async function patchWorkbench(context: vscode.ExtensionContext, theme: 'minecraf
     const htmlPath = getWorkbenchHtmlPath();
     let html: string;
 
+    let originalHtml: string;
     try {
         html = await fs.promises.readFile(htmlPath, 'utf8');
+        originalHtml = html;
     } catch {
         if (!silent) {
-            vscode.window.showErrorMessage('Parkour Background: Could not read VSCode workbench file.');
+            vscode.window.showErrorMessage(
+                `Parkour Background: Could not read VSCode workbench file. ` +
+                `Tried: ${htmlPath} — appRoot: ${vscode.env.appRoot}`
+            );
         }
         return;
     }
@@ -141,13 +187,34 @@ async function patchWorkbench(context: vscode.ExtensionContext, theme: 'minecraf
 
     try {
         await fs.promises.writeFile(htmlPath, html, 'utf8');
-        await updateProductJsonChecksum(htmlPath);
     } catch (err: unknown) {
         if (!silent) {
-            const msg = (err as NodeJS.ErrnoException).code === 'EACCES'
-                ? 'Parkour Background: Permission denied writing to VSCode. Try running VSCode as administrator.'
-                : `Parkour Background: Failed to patch VSCode — ${err}`;
+            const code = (err as NodeJS.ErrnoException).code;
+            let msg: string;
+            if (code === 'EROFS') {
+                msg = 'Parkour Background: VS Code is running from a read-only volume (e.g. a DMG). ' +
+                    'Drag "Visual Studio Code.app" to your Applications folder and relaunch from there.';
+            } else if (code === 'EACCES') {
+                msg = 'Parkour Background: Permission denied. Run in Terminal: ' +
+                    'sudo chown -R $(whoami) "/Applications/Visual Studio Code.app"';
+            } else {
+                msg = `Parkour Background: Failed to patch VSCode — ${err}`;
+            }
             vscode.window.showErrorMessage(msg);
+        }
+        return;
+    }
+
+    const checksumOk = await updateProductJsonChecksum(htmlPath);
+    if (!checksumOk) {
+        // Restore the original file so VS Code is never left in a corrupt state.
+        await fs.promises.writeFile(htmlPath, originalHtml, 'utf8').catch(() => {});
+        if (!silent) {
+            vscode.window.showErrorMessage(
+                'Parkour Background: Could not update VS Code integrity checksum. ' +
+                'Fix write permissions by running in Terminal: ' +
+                'sudo chown -R $(whoami) "/Applications/Visual Studio Code.app"'
+            );
         }
         return;
     }
@@ -172,27 +239,34 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     context.subscriptions.push(vscode.commands.registerCommand('backgroundImage.toggleMinecraft', async () => {
         const config = vscode.workspace.getConfiguration('backgroundImage');
         const current = config.get<string>('activeTheme', 'none');
+        _localConfigChange = true;
         await config.update('activeTheme', current === 'minecraft' ? 'none' : 'minecraft', vscode.ConfigurationTarget.Global);
     }));
 
     context.subscriptions.push(vscode.commands.registerCommand('backgroundImage.toggleSubwaySurfers', async () => {
         const config = vscode.workspace.getConfiguration('backgroundImage');
         const current = config.get<string>('activeTheme', 'none');
+        _localConfigChange = true;
         await config.update('activeTheme', current === 'subwaysurfers' ? 'none' : 'subwaysurfers', vscode.ConfigurationTarget.Global);
     }));
 
     context.subscriptions.push(vscode.workspace.onDidChangeConfiguration(async (e) => {
+        if (!e.affectsConfiguration(CONFIG_KEY)) { return; }
         const config = vscode.workspace.getConfiguration('backgroundImage');
         const theme = config.get<string>('activeTheme', 'none');
-        if (e.affectsConfiguration(CONFIG_KEY)) {
-            updateMenuContext(theme === 'minecraft', theme === 'subwaysurfers');
-            if (theme === 'minecraft') {
-                await patchWorkbench(context, 'minecraft');
-            } else if (theme === 'subwaysurfers') {
-                await patchWorkbench(context, 'subwaysurfers');
-            } else {
-                await patchWorkbench(context, null);
-            }
+        updateMenuContext(theme === 'minecraft', theme === 'subwaysurfers');
+
+        // Only the window that ran the command patches the file and reloads.
+        // Other windows just updated their context menus above and stop here.
+        if (!_localConfigChange) { return; }
+        _localConfigChange = false;
+
+        if (theme === 'minecraft') {
+            await patchWorkbench(context, 'minecraft');
+        } else if (theme === 'subwaysurfers') {
+            await patchWorkbench(context, 'subwaysurfers');
+        } else {
+            await patchWorkbench(context, null);
         }
     }));
 

@@ -1,8 +1,17 @@
+.devcontainer/
 .vscode-test/
 .vscode-test-compile/
 .vscode/
+.git/
+.gitignore
+.DS_Store
+.eslintrc.json
 node_modules/
 src/
 *.vsix
+*.map
 docs/
 assets/tmp/
+out/test/
+tsconfig.json
+package-lock.json

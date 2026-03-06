@@ -108,6 +108,7 @@
   ],
   "scripts": {
     "vscode:prepublish": "npm run compile",
+    "package": "npm run compile && node node_modules/@vscode/vsce/vsce package",
     "compile": "node node_modules/typescript/bin/tsc -p ./",
     "watch": "node node_modules/typescript/bin/tsc -watch -p ./",
     "pretest": "npm run compile && npm run lint",
