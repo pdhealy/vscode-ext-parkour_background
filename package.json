@@ -103,8 +103,7 @@
     }
   },
   "extensionKind": [
-    "ui",
-    "workspace"
+    "ui"
   ],
   "scripts": {
     "vscode:prepublish": "npm run compile",

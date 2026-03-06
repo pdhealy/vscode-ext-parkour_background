@@ -11,13 +11,13 @@ Add a semi-transparent Minecraft or Subway Surfers background image to your VS C
 - ✅ Code remains fully legible — background is rendered behind editor text at low opacity
 - ⚡ Toggle on/off via **Command Palette** or **editor context menu**
 - 🎚️ Adjustable opacity (5% / 10% / 15% / 25%) via `Parkour Background: Set Opacity`
-- 🔄 Background resets to default on every VSCode restart — re-toggle to apply
+- 🔄 Background persists across VS Code restarts — toggle off and on to pick a new random image
 
 ## Requirements
 
 Visual Studio Code version 1.85.0 or later. No additional extensions required.
 
-> **Note:** To inject the background image, this extension patches VSCode's workbench HTML file. As a result, VSCode will display an **"installation appears corrupt"** warning badge in the title bar. This is expected, harmless, and can be permanently dismissed by clicking **"Don't Show Again"** on the notification. On Linux and macOS, VSCode may need to be run with elevated permissions the first time the background is enabled (see [Troubleshooting](#troubleshooting)).
+> **Note:** This extension patches VS Code's workbench HTML file to inject the background image. On first use it may request administrator credentials to update VS Code's integrity checksum (so the install is not flagged as corrupt). On **Windows**, run VS Code as Administrator the first time you enable a background. On **Linux**, you may need to run `sudo chown -R $(whoami) /usr/share/code` once.
 
 ## Installation
 
@@ -36,9 +36,7 @@ Visual Studio Code version 1.85.0 or later. No additional extensions required.
 - **Enable / Disable Parkour Background (Minecraft)**
 - **Enable / Disable Parkour Background (Subway Surfers)**
 
-After toggling, VSCode will reload automatically to apply the change.
-
-> The background resets to default on every VSCode restart. Toggle it on again after reloading.
+After toggling, VS Code will reload automatically to apply the change. The background persists across restarts.
 
 ### Set Opacity
 
@@ -61,11 +59,13 @@ Choose from:
 ## Troubleshooting
 
 **Background image does not appear after enabling**
-- VSCode reloads automatically after toggling. If it doesn't reload, run `Ctrl+Shift+P` → **Developer: Reload Window**.
-- On Linux/macOS, if you see a permission error, try running VSCode with `sudo code --no-sandbox` once to apply the patch, then restart normally.
+- VS Code reloads automatically after toggling. If it doesn't, run `Ctrl+Shift+P` → **Developer: Reload Window**.
+- **macOS:** If you see a permission error, enter your password when prompted, or run `sudo chown -R $(whoami) "/Applications/Visual Studio Code.app"` in Terminal.
+- **Windows:** Right-click the VS Code shortcut and select **Run as administrator**, enable the background, then relaunch normally.
+- **Linux:** Run `sudo chown -R $(whoami) /usr/share/code` (adjust path for your installation) then restart VS Code.
 
 **"Installation appears corrupt" warning**
-- This is expected. The extension injects CSS into VSCode's workbench, which triggers VSCode's integrity check. Click **"Don't Show Again"** to permanently dismiss the notification.
+- The extension updates VS Code's integrity checksum automatically when patching. If this warning appears, it means the checksum could not be written — follow the platform-specific permission steps above.
 
 **Context menu item is missing**
 - Right-click must be performed inside the editor text area, not on the tab bar or scrollbar.
@@ -73,8 +73,7 @@ Choose from:
 
 ## Known Limitations
 
-- The "installation appears corrupt" warning cannot be avoided — it is triggered whenever VSCode's core files are modified.
-- The background image resets on every VSCode restart by design.
+- Per-window background control is not possible — VS Code's workbench HTML is a single shared file, so the background applies to all windows when enabled.
 
 ## Release Notes
 
