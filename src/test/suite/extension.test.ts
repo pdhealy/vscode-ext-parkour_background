@@ -3,6 +3,8 @@ import * as vscode from 'vscode';
 import * as sinon from 'sinon';
 import * as fs from 'fs';
 
+import { _setLocalConfigChangeForTest } from '../../extension';
+
 // Use require() to obtain the ORIGINAL fs module object so that stubs propagate
 // to the extension's code, which also accesses the original via __importStar getters.
 // eslint-disable-next-line @typescript-eslint/no-require-imports, @typescript-eslint/no-var-requires
@@ -78,6 +80,7 @@ suite('Background Image Extension Tests', () => {
         const theme = vscode.workspace.getConfiguration('backgroundImage').get<string>('activeTheme');
         assert.strictEqual(theme, 'minecraft', 'activeTheme should become "minecraft"');
 
+        _setLocalConfigChangeForTest(true);
         await vscode.workspace.getConfiguration('backgroundImage').update('activeTheme', 'none', vscode.ConfigurationTarget.Global);
         readStub.restore();
         writeStub.restore();
@@ -86,6 +89,7 @@ suite('Background Image Extension Tests', () => {
     test('toggleMinecraft command disables minecraft theme when currently minecraft', async () => {
         const { readStub, writeStub } = stubFsSuccess(sandbox);
 
+        _setLocalConfigChangeForTest(true);
         await vscode.workspace.getConfiguration('backgroundImage').update('activeTheme', 'minecraft', vscode.ConfigurationTarget.Global);
         await new Promise(resolve => setTimeout(resolve, 150));
 
@@ -110,6 +114,7 @@ suite('Background Image Extension Tests', () => {
         const theme = vscode.workspace.getConfiguration('backgroundImage').get<string>('activeTheme');
         assert.strictEqual(theme, 'subwaysurfers', 'activeTheme should become "subwaysurfers"');
 
+        _setLocalConfigChangeForTest(true);
         await vscode.workspace.getConfiguration('backgroundImage').update('activeTheme', 'none', vscode.ConfigurationTarget.Global);
         readStub.restore();
         writeStub.restore();
@@ -118,6 +123,7 @@ suite('Background Image Extension Tests', () => {
     test('toggleSubwaySurfers command disables subwaysurfers theme when currently subwaysurfers', async () => {
         const { readStub, writeStub } = stubFsSuccess(sandbox);
 
+        _setLocalConfigChangeForTest(true);
         await vscode.workspace.getConfiguration('backgroundImage').update('activeTheme', 'subwaysurfers', vscode.ConfigurationTarget.Global);
         await new Promise(resolve => setTimeout(resolve, 150));
 
@@ -134,6 +140,7 @@ suite('Background Image Extension Tests', () => {
     test('toggleSubwaySurfers switches from minecraft to subwaysurfers', async () => {
         const { readStub, writeStub } = stubFsSuccess(sandbox);
 
+        _setLocalConfigChangeForTest(true);
         await vscode.workspace.getConfiguration('backgroundImage').update('activeTheme', 'minecraft', vscode.ConfigurationTarget.Global);
         await new Promise(resolve => setTimeout(resolve, 150));
 
@@ -143,6 +150,7 @@ suite('Background Image Extension Tests', () => {
         const theme = vscode.workspace.getConfiguration('backgroundImage').get<string>('activeTheme');
         assert.strictEqual(theme, 'subwaysurfers', 'Theme should switch from minecraft to subwaysurfers');
 
+        _setLocalConfigChangeForTest(true);
         await vscode.workspace.getConfiguration('backgroundImage').update('activeTheme', 'none', vscode.ConfigurationTarget.Global);
         readStub.restore();
         writeStub.restore();
@@ -151,6 +159,7 @@ suite('Background Image Extension Tests', () => {
     test('toggleMinecraft switches from subwaysurfers to minecraft', async () => {
         const { readStub, writeStub } = stubFsSuccess(sandbox);
 
+        _setLocalConfigChangeForTest(true);
         await vscode.workspace.getConfiguration('backgroundImage').update('activeTheme', 'subwaysurfers', vscode.ConfigurationTarget.Global);
         await new Promise(resolve => setTimeout(resolve, 150));
 
@@ -160,6 +169,7 @@ suite('Background Image Extension Tests', () => {
         const theme = vscode.workspace.getConfiguration('backgroundImage').get<string>('activeTheme');
         assert.strictEqual(theme, 'minecraft', 'Theme should switch from subwaysurfers to minecraft');
 
+        _setLocalConfigChangeForTest(true);
         await vscode.workspace.getConfiguration('backgroundImage').update('activeTheme', 'none', vscode.ConfigurationTarget.Global);
         readStub.restore();
         writeStub.restore();
@@ -174,6 +184,7 @@ suite('Background Image Extension Tests', () => {
         sandbox.stub(fsOrig, 'readFileSync').returns(Buffer.from('pixel'));
         sandbox.stub(vscode.window, 'showInformationMessage').resolves(undefined);
 
+        _setLocalConfigChangeForTest(true);
         await vscode.workspace.getConfiguration('backgroundImage').update('activeTheme', 'minecraft', vscode.ConfigurationTarget.Global);
         await new Promise(resolve => setTimeout(resolve, 300));
 
@@ -185,6 +196,7 @@ suite('Background Image Extension Tests', () => {
         assert.ok(written.includes('overflow-guard::before'), 'Should target ::before pseudo-element');
         assert.ok(written.includes('background-image: url("data:image/webp;base64,'), 'Should embed base64 webp data URI');
 
+        _setLocalConfigChangeForTest(true);
         await vscode.workspace.getConfiguration('backgroundImage').update('activeTheme', 'none', vscode.ConfigurationTarget.Global);
         readStub.restore();
         writeStub.restore();
@@ -197,6 +209,7 @@ suite('Background Image Extension Tests', () => {
         sandbox.stub(fsOrig, 'readFileSync').returns(Buffer.from('pixel'));
         sandbox.stub(vscode.window, 'showInformationMessage').resolves(undefined);
 
+        _setLocalConfigChangeForTest(true);
         await vscode.workspace.getConfiguration('backgroundImage').update('activeTheme', 'subwaysurfers', vscode.ConfigurationTarget.Global);
         await new Promise(resolve => setTimeout(resolve, 300));
 
@@ -207,6 +220,7 @@ suite('Background Image Extension Tests', () => {
         assert.ok(written.includes('overflow-guard::before'), 'Should target ::before pseudo-element');
         assert.ok(written.includes('background-image: url("data:image/webp;base64,'), 'Should embed base64 webp data URI');
 
+        _setLocalConfigChangeForTest(true);
         await vscode.workspace.getConfiguration('backgroundImage').update('activeTheme', 'none', vscode.ConfigurationTarget.Global);
         readStub.restore();
         writeStub.restore();
@@ -219,6 +233,7 @@ suite('Background Image Extension Tests', () => {
         sandbox.stub(fsOrig, 'readFileSync').returns(Buffer.from('pixel'));
         sandbox.stub(vscode.window, 'showInformationMessage').resolves(undefined);
 
+        _setLocalConfigChangeForTest(true);
         await vscode.workspace.getConfiguration('backgroundImage').update('activeTheme', 'minecraft', vscode.ConfigurationTarget.Global);
         await new Promise(resolve => setTimeout(resolve, 300));
 
@@ -228,6 +243,7 @@ suite('Background Image Extension Tests', () => {
         // Must scope to .active so inactive editor windows are unaffected
         assert.ok(written.includes('.editor-group-container.active'), 'CSS must be scoped to .active editor group');
 
+        _setLocalConfigChangeForTest(true);
         await vscode.workspace.getConfiguration('backgroundImage').update('activeTheme', 'none', vscode.ConfigurationTarget.Global);
         readStub.restore();
         writeStub.restore();
@@ -240,6 +256,7 @@ suite('Background Image Extension Tests', () => {
         sandbox.stub(fsOrig, 'readFileSync').returns(Buffer.from('pixel'));
         sandbox.stub(vscode.window, 'showInformationMessage').resolves(undefined);
 
+        _setLocalConfigChangeForTest(true);
         await vscode.workspace.getConfiguration('backgroundImage').update('activeTheme', 'minecraft', vscode.ConfigurationTarget.Global);
         await new Promise(resolve => setTimeout(resolve, 300));
 
@@ -252,6 +269,7 @@ suite('Background Image Extension Tests', () => {
         assert.ok(opacity >= 0.05, `Opacity ${opacity} should be >= 0.05`);
         assert.ok(opacity <= 0.25, `Opacity ${opacity} should be <= 0.25`);
 
+        _setLocalConfigChangeForTest(true);
         await vscode.workspace.getConfiguration('backgroundImage').update('activeTheme', 'none', vscode.ConfigurationTarget.Global);
         readStub.restore();
         writeStub.restore();
@@ -265,10 +283,12 @@ suite('Background Image Extension Tests', () => {
         const writeStub = sandbox.stub(fs.promises, 'writeFile').resolves();
 
         // Force the config-change listener to fire for 'none'
+        _setLocalConfigChangeForTest(true);
         await vscode.workspace.getConfiguration('backgroundImage').update('activeTheme', 'subwaysurfers', vscode.ConfigurationTarget.Global);
         await new Promise(resolve => setTimeout(resolve, 100));
         writeStub.resetHistory();
 
+        _setLocalConfigChangeForTest(true);
         await vscode.workspace.getConfiguration('backgroundImage').update('activeTheme', 'none', vscode.ConfigurationTarget.Global);
         await new Promise(resolve => setTimeout(resolve, 300));
 
@@ -288,12 +308,14 @@ suite('Background Image Extension Tests', () => {
         const writeStub = sandbox.stub(fs.promises, 'writeFile').resolves();
 
         // Trigger the none path directly (theme is already none from previous teardown)
+        _setLocalConfigChangeForTest(true);
         await vscode.workspace.getConfiguration('backgroundImage').update('activeTheme', 'minecraft', vscode.ConfigurationTarget.Global);
         await new Promise(resolve => setTimeout(resolve, 100));
         writeStub.resetHistory();
         readStub.resetBehavior();
         readStub.resolves(MOCK_HTML as unknown as Buffer);
 
+        _setLocalConfigChangeForTest(true);
         await vscode.workspace.getConfiguration('backgroundImage').update('activeTheme', 'none', vscode.ConfigurationTarget.Global);
         await new Promise(resolve => setTimeout(resolve, 300));
 
@@ -316,6 +338,7 @@ suite('Background Image Extension Tests', () => {
             value: 0.05,
         } as unknown as vscode.QuickPickItem);
 
+        _setLocalConfigChangeForTest(true);
         await vscode.workspace.getConfiguration('backgroundImage').update('activeTheme', 'minecraft', vscode.ConfigurationTarget.Global);
         await new Promise(resolve => setTimeout(resolve, 150));
 
@@ -325,6 +348,7 @@ suite('Background Image Extension Tests', () => {
         // Verify patchWorkbench was called again after opacity update
         assert.ok(writeStub.callCount >= 1, 'writeFile should be called at least once after opacity change');
 
+        _setLocalConfigChangeForTest(true);
         await vscode.workspace.getConfiguration('backgroundImage').update('activeTheme', 'none', vscode.ConfigurationTarget.Global);
         readStub.restore();
         writeStub.restore();
@@ -334,6 +358,7 @@ suite('Background Image Extension Tests', () => {
         const { readStub, writeStub } = stubFsSuccess(sandbox);
         sandbox.stub(vscode.window, 'showQuickPick').resolves(undefined);
 
+        _setLocalConfigChangeForTest(true);
         await vscode.workspace.getConfiguration('backgroundImage').update('activeTheme', 'minecraft', vscode.ConfigurationTarget.Global);
         await new Promise(resolve => setTimeout(resolve, 150));
         const callsBefore = writeStub.callCount;
@@ -343,6 +368,7 @@ suite('Background Image Extension Tests', () => {
 
         assert.strictEqual(writeStub.callCount, callsBefore, 'No extra writes should occur when user cancels the picker');
 
+        _setLocalConfigChangeForTest(true);
         await vscode.workspace.getConfiguration('backgroundImage').update('activeTheme', 'none', vscode.ConfigurationTarget.Global);
         readStub.restore();
         writeStub.restore();
@@ -356,6 +382,7 @@ suite('Background Image Extension Tests', () => {
         sandbox.stub(fsOrig, 'readdirSync').throws(new Error('ENOENT: no such file'));
         const showErrorStub = sandbox.stub(vscode.window, 'showErrorMessage').resolves(undefined);
 
+        _setLocalConfigChangeForTest(true);
         await vscode.workspace.getConfiguration('backgroundImage').update('activeTheme', 'minecraft', vscode.ConfigurationTarget.Global);
         await new Promise(resolve => setTimeout(resolve, 300));
 
@@ -364,6 +391,7 @@ suite('Background Image Extension Tests', () => {
             assert.ok(msg.includes('Failed to load') || msg.includes('No images'), 'Should report missing images error');
         }
 
+        _setLocalConfigChangeForTest(true);
         await vscode.workspace.getConfiguration('backgroundImage').update('activeTheme', 'none', vscode.ConfigurationTarget.Global);
     });
 
@@ -374,6 +402,7 @@ suite('Background Image Extension Tests', () => {
         sandbox.stub(fsOrig, 'readdirSync').returns([] as unknown as ReturnType<typeof fs.readdirSync>);
         const showErrorStub = sandbox.stub(vscode.window, 'showErrorMessage').resolves(undefined);
 
+        _setLocalConfigChangeForTest(true);
         await vscode.workspace.getConfiguration('backgroundImage').update('activeTheme', 'subwaysurfers', vscode.ConfigurationTarget.Global);
         await new Promise(resolve => setTimeout(resolve, 300));
 
@@ -385,6 +414,7 @@ suite('Background Image Extension Tests', () => {
             );
         }
 
+        _setLocalConfigChangeForTest(true);
         await vscode.workspace.getConfiguration('backgroundImage').update('activeTheme', 'none', vscode.ConfigurationTarget.Global);
     });
 
@@ -396,6 +426,7 @@ suite('Background Image Extension Tests', () => {
         sandbox.stub(fs.promises, 'writeFile').rejects(err);
         const showErrorStub = sandbox.stub(vscode.window, 'showErrorMessage').resolves(undefined);
 
+        _setLocalConfigChangeForTest(true);
         await vscode.workspace.getConfiguration('backgroundImage').update('activeTheme', 'minecraft', vscode.ConfigurationTarget.Global);
         await new Promise(resolve => setTimeout(resolve, 300));
 
@@ -407,6 +438,7 @@ suite('Background Image Extension Tests', () => {
             );
         }
 
+        _setLocalConfigChangeForTest(true);
         await vscode.workspace.getConfiguration('backgroundImage').update('activeTheme', 'none', vscode.ConfigurationTarget.Global);
     });
 
@@ -418,6 +450,7 @@ suite('Background Image Extension Tests', () => {
         sandbox.stub(fs.promises, 'writeFile').rejects(err);
         const showErrorStub = sandbox.stub(vscode.window, 'showErrorMessage').resolves(undefined);
 
+        _setLocalConfigChangeForTest(true);
         await vscode.workspace.getConfiguration('backgroundImage').update('activeTheme', 'minecraft', vscode.ConfigurationTarget.Global);
         await new Promise(resolve => setTimeout(resolve, 300));
 
@@ -429,6 +462,7 @@ suite('Background Image Extension Tests', () => {
             );
         }
 
+        _setLocalConfigChangeForTest(true);
         await vscode.workspace.getConfiguration('backgroundImage').update('activeTheme', 'none', vscode.ConfigurationTarget.Global);
     });
 
@@ -437,6 +471,7 @@ suite('Background Image Extension Tests', () => {
         sandbox.stub(fs.promises, 'readFile').rejects(readErr);
         const showErrorStub = sandbox.stub(vscode.window, 'showErrorMessage').resolves(undefined);
 
+        _setLocalConfigChangeForTest(true);
         await vscode.workspace.getConfiguration('backgroundImage').update('activeTheme', 'minecraft', vscode.ConfigurationTarget.Global);
         await new Promise(resolve => setTimeout(resolve, 300));
 
@@ -448,6 +483,7 @@ suite('Background Image Extension Tests', () => {
             );
         }
 
+        _setLocalConfigChangeForTest(true);
         await vscode.workspace.getConfiguration('backgroundImage').update('activeTheme', 'none', vscode.ConfigurationTarget.Global);
     });
 });

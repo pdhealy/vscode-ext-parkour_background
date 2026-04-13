@@ -12,7 +12,12 @@ const INJECTION_END = `</style><!-- /${STYLE_ID} -->`;
 
 // True only in the window that ran a toggle command — prevents other windows
 // from patching workbench.html and reloading when the global config changes.
-let _localConfigChange = false;
+export let _localConfigChange = false;
+
+// For testing purposes
+export function _setLocalConfigChangeForTest(value: boolean) {
+    _localConfigChange = value;
+}
 
 function getWorkbenchHtmlPath(): string {
     // VS Code 1.70+ uses electron-sandbox; older builds used electron-browser.
