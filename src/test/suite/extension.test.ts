@@ -5,7 +5,7 @@ import * as fs from 'fs';
 
 // Use require() to obtain the ORIGINAL fs module object so that stubs propagate
 // to the extension's code, which also accesses the original via __importStar getters.
-// eslint-disable-next-line @typescript-eslint/no-require-imports
+// eslint-disable-next-line @typescript-eslint/no-require-imports, @typescript-eslint/no-var-requires
 const fsOrig: typeof fs = require('fs');
 
 const MOCK_HTML = `<!-- Copyright (C) Microsoft Corporation -->\n<!DOCTYPE html>\n<html>\n\t<head>\n\t</head>\n\t<body></body>\n</html>`;
