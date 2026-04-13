@@ -1,0 +1,16 @@
+{
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "Bash|Write|Edit|MultiEdit|Read|Glob|Grep|Agent|Task|WebFetch|WebSearch|NotebookEdit|TodoWrite|TodoRead",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "LOG_DIR=\"/workspaces/tw_price_comparer/.claude/logs/$(date +%Y-%m-%d)\" && mkdir -p \"$LOG_DIR\" && jq -r '\"[\" + (now | strftime(\"%Y-%m-%d %H:%M:%S\")) + \"] \" + .tool_name + (if .tool_input.description then \" (\" + .tool_input.description + \")\" else \"\" end) + \" | \" + (if .tool_input.command then .tool_input.command elif .tool_input.file_path then .tool_input.file_path elif .tool_input.pattern then (\"pattern=\" + .tool_input.pattern) else (.tool_input | tojson | .[0:200]) end)' >> \"$LOG_DIR/command.log\" 2>/dev/null || true",
+            "async": true
+          }
+        ]
+      }
+    ]
+  }
+}

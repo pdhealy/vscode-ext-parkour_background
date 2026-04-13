@@ -1,0 +1,58 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(git add:*)",
+      "Bash(git commit:*)",
+      "Bash(git push:*)",
+      "Bash(git rm:*)",
+      "Bash(git checkout:*)",
+      "Bash(grep -r \"color\\\\|Color\\\\|COLOR\" /workspace/docs/public/anemone --include=\"*.html\" --include=\"*.css\" --include=\"*.toml\" --include=\"*.json\" 2>/dev/null | head -30)",
+      "Bash(grep -r \"veqev\\\\|#[0-9a-fA-F]\\\\{3,6\\\\}\\\\|rgb\\\\|hsl\\\\|--\\\\w\" /workspace/docs/public/anemone/static/css/ 2>/dev/null)",
+      "Bash(find /workspace -name \"*.css\" -o -name \"custom.css\" 2>/dev/null | grep -v node_modules | head -20)",
+      "Bash(curl -s \"https://raw.githack.com/Speyll/suCSS/main/suCSS-min.css\" 2>/dev/null | head -200)",
+      "Bash(curl -sL \"https://cdn.jsdelivr.net/gh/antijingoist/opendyslexic@master/compiled/OpenDyslexic-Regular.otf\" -o /tmp/OpenDyslexic-Regular.otf)",
+      "Read(//tmp/**)",
+      "Bash(curl -sL --max-time 30 \"https://github.com/antijingoist/opendyslexic/raw/master/compiled/OpenDyslexic-Regular.otf\" -o /tmp/OpenDyslexic-Regular.otf && wc -c /tmp/OpenDyslexic-Regular.otf)",
+      "Bash(file /tmp/OpenDyslexic-Regular.otf && head -c 20 /tmp/OpenDyslexic-Regular.otf | xxd)",
+      "WebFetch(domain:fonts.cdnfonts.com)",
+      "WebFetch(domain:github.com)",
+      "Bash(curl -sL \"https://github.com/antijingoist/opendyslexic/raw/master/compiled/OpenDyslexic-Regular.otf\" -o /tmp/OpenDyslexic-Regular.otf && wc -c /tmp/OpenDyslexic-Regular.otf)",
+      "Bash(file /tmp/OpenDyslexic-Regular.otf && xxd /tmp/OpenDyslexic-Regular.otf | head -2)",
+      "Bash(curl -sL \"https://raw.githubusercontent.com/antijingoist/opendyslexic/master/compiled/OpenDyslexic-Regular.otf\" -o /tmp/OpenDyslexic-Regular.otf && file /tmp/OpenDyslexic-Regular.otf)",
+      "Bash(python3 - <<'EOF'\nimport base64, re\n\nwith open\\('/tmp/OpenDyslexic-Regular.otf', 'rb'\\) as f:\n    font_b64 = base64.b64encode\\(f.read\\(\\)\\).decode\\('ascii'\\)\n\nwith open\\('/workspace/src/vim_tutorial/styling.css', 'r'\\) as f:\n    content = f.read\\(\\)\n\n# Replace the broken @font-face with the correct one\nnew_face = \\(\n    \"@font-face {\\\\n\"\n    \"  font-family: 'OpenDyslexic';\\\\n\"\n    \"  src: url\\('data:font/opentype;base64,\" + font_b64 + \"'\\) format\\('opentype'\\);\\\\n\"\n    \"  font-weight: normal;\\\\n\"\n    \"  font-style: normal;\\\\n\"\n    \"}\"\n\\)\n\ncontent = re.sub\\(\n    r\"@font-face \\\\{[^}]*font-family: 'OpenDyslexic'[^}]*\\\\}\",\n    new_face,\n    content,\n    flags=re.DOTALL\n\\)\n\nwith open\\('/workspace/src/vim_tutorial/styling.css', 'w'\\) as f:\n    f.write\\(content\\)\n\nprint\\(\"Done. CSS size:\", len\\(content\\), \"bytes\"\\)\nprint\\(\"Font b64 length:\", len\\(font_b64\\)\\)\n# Verify it looks correct\nidx = content.find\\(\"data:font/opentype;base64,\"\\)\nprint\\(\"Data URI prefix found:\", idx > 0\\)\nprint\\(\"First 60 chars of b64:\", font_b64[:60]\\)\nEOF)",
+      "Bash(python3 - <<'EOF'\nimport re\n\nwith open\\('/workspace/src/vim_tutorial/styling.css', 'r'\\) as f:\n    content = f.read\\(\\)\n\n# Remove the @font-face block and its comment\ncontent = re.sub\\(\n    r\"/\\\\* ── OpenDyslexic font[^*]*\\\\*/\\\\s*@font-face \\\\{[^}]*\\\\}\\\\s*\",\n    '',\n    content,\n    flags=re.DOTALL\n\\)\n\n# Replace font-family reference\ncontent = content.replace\\(\n    \"font-family: 'OpenDyslexic', 'OpenDyslexic-Regular', sans-serif !important;\",\n    \"font-family: 'Futura', 'Futura-Medium', 'Century Gothic', sans-serif !important;\"\n\\)\n\n# Replace comment\ncontent = content.replace\\(\n    '/* ── Dyslexia-friendly font override ── */',\n    '/* ── Futura font override ── */'\n\\)\n\nwith open\\('/workspace/src/vim_tutorial/styling.css', 'w'\\) as f:\n    f.write\\(content\\)\n\nprint\\(\"Done. CSS size:\", len\\(content\\), \"bytes\"\\)\nEOF)",
+      "Bash(chmod +x /workspace/.claude/hooks/remind-docs.sh)",
+      "Bash(git revert:*)",
+      "Bash(netstat -tlnp)",
+      "Bash(jq --version)",
+      "Bash(ls -la /logs)",
+      "Bash(mkdir -p /logs/test)",
+      "Bash(mkdir -p /tmp/logs/test)",
+      "Bash(rmdir /tmp/logs/test)",
+      "Bash(python3 -c \"from playwright.async_api import async_playwright; print\\('playwright ok'\\)\")",
+      "Bash(python3 -c \"from playwright_stealth import Stealth; print\\('stealth ok'\\)\")",
+      "Bash(pip install:*)",
+      "Bash(playwright install:*)",
+      "Bash(python3:*)",
+      "Bash(git init:*)",
+      "Bash(cat /workspaces/tw_price_comparer/.gemini/*)"
+    ]
+  },
+  "enabledMcpjsonServers": [
+    "sequential-thinking",
+    "context7"
+  ],
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "/workspace/.claude/hooks/remind-docs.sh"
+          }
+        ]
+      }
+    ]
+  }
+}
