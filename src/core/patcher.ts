@@ -3,66 +3,18 @@ import * as fs from 'fs';
 import * as path from 'path';
 import * as crypto from 'crypto';
 import * as os from 'os';
-import * as cp from 'child_process';
-
-const STYLE_ID = 'editor-background-image';
-const INJECTION_START = `<style id="${STYLE_ID}">`;
-const INJECTION_END = `</style><!-- /${STYLE_ID} -->`;
-
-export function getWorkbenchHtmlPath(): string {
-    const subPaths = [
-        ['out', 'vs', 'code', 'electron-sandbox', 'workbench', 'workbench.html'],
-        ['out', 'vs', 'code', 'electron-browser', 'workbench', 'workbench.html'],
-    ];
-
-    if (process.execPath) {
-        const execDir = path.dirname(process.execPath);
-        let resourceAppDir = '';
-        if (process.platform === 'darwin') {
-            resourceAppDir = path.join(execDir, '..', 'Resources', 'app');
-        } else {
-            resourceAppDir = path.join(execDir, 'resources', 'app');
-        }
-        for (const parts of subPaths) {
-            const p = path.join(resourceAppDir, ...parts);
-            if (fs.existsSync(p)) { return p; }
-        }
-    }
-
-    for (const parts of subPaths) {
-        const p = path.join(vscode.env.appRoot, ...parts);
-        if (fs.existsSync(p)) { return p; }
-    }
-
-    const appRoots: string[] = [
-        '/usr/share/code/resources/app',
-        '/usr/lib/code/resources/app',
-        '/opt/visual-studio-code/resources/app',
-        '/Applications/Visual Studio Code.app/Contents/Resources/app',
-        path.join(process.env.HOME ?? '', 'Applications', 'Visual Studio Code.app', 'Contents', 'Resources', 'app'),
-        path.join(process.env.LOCALAPPDATA ?? '', 'Programs', 'Microsoft VS Code', 'resources', 'app'),
-        path.join(process.env.ProgramFiles ?? 'C:\\Program Files', 'Microsoft VS Code', 'resources', 'app'),
-        path.join(process.env['ProgramFiles(x86)'] ?? 'C:\\Program Files (x86)', 'Microsoft VS Code', 'resources', 'app'),
-    ];
-
-    for (const root of appRoots) {
-        for (const parts of subPaths) {
-            const p = path.join(root, ...parts);
-            if (fs.existsSync(p)) { return p; }
-        }
-    }
-
-    return path.join(vscode.env.appRoot, ...subPaths[0]);
-}
+import { getWorkbenchHtmlPaths } from '../utils/paths';
+import { INJECTION_START, INJECTION_END, buildCss } from '../utils/css';
+import { writeFileElevated } from '../utils/fs';
 
 function permissionFixInstructions(): string {
     if (process.platform === 'win32') {
-        return 'Close VS Code and relaunch as Administrator (right-click the shortcut → "Run as administrator").';
+        return 'Ensure your user has write access or authorize the UAC prompt.';
     }
     if (process.platform === 'darwin') {
-        return 'VS Code files are read-only. Please reinstall VS Code or fix its permissions.';
+        return 'Authorize the password prompt or fix VS Code permissions.';
     }
-    return 'Ensure your user has write access to the VS Code installation directory.';
+    return 'Authorize the password prompt or ensure write access.';
 }
 
 async function getRandomWebpFromFolder(folderPath: string): Promise<string | null> {
@@ -74,31 +26,6 @@ async function getRandomWebpFromFolder(folderPath: string): Promise<string | nul
     } catch {
         return null;
     }
-}
-
-async function buildCss(imagePath: string, opacity: number): Promise<string> {
-    const imageData = await fs.promises.readFile(imagePath);
-    const base64 = imageData.toString('base64');
-    const ext = path.extname(imagePath).toLowerCase();
-    const mimeType = ext === '.webp' ? 'image/webp' : 'image/png';
-    const dataUri = `data:${mimeType};base64,${base64}`;
-    return [
-        INJECTION_START,
-        `.editor-group-container.active .monaco-editor .overflow-guard { position: relative; }`,
-        `.editor-group-container.active .monaco-editor .overflow-guard::before {`,
-        `  content: '';`,
-        `  position: absolute;`,
-        `  top: 0; left: 0; right: 0; bottom: 0;`,
-        `  background-image: url("${dataUri}");`,
-        `  background-position: center;`,
-        `  background-repeat: no-repeat;`,
-        `  background-size: cover;`,
-        `  opacity: ${opacity};`,
-        `  pointer-events: none;`,
-        `  z-index: 50;`,
-        `}`,
-        INJECTION_END,
-    ].join('\n');
 }
 
 async function updateProductJsonChecksum(htmlPath: string): Promise<boolean> {
@@ -119,23 +46,7 @@ async function updateProductJsonChecksum(htmlPath: string): Promise<boolean> {
         product.checksums[key] = checksum;
         const newContent = JSON.stringify(product, null, '\t');
 
-        try {
-            await fs.promises.writeFile(productPath, newContent, 'utf8');
-        } catch (writeErr) {
-            if ((writeErr as NodeJS.ErrnoException).code !== 'EACCES' || process.platform !== 'darwin') {
-                throw writeErr;
-            }
-            const tmpPath = path.join(os.tmpdir(), `vscode-product-${Date.now()}.json`);
-            await fs.promises.writeFile(tmpPath, newContent, 'utf8');
-            try {
-                cp.execFileSync('osascript', [
-                    '-e',
-                    `do shell script "cp " & quoted form of "${tmpPath}" & " " & quoted form of "${productPath}" with administrator privileges`,
-                ]);
-            } finally {
-                await fs.promises.unlink(tmpPath).catch(() => {});
-            }
-        }
+        await writeFileElevated(productPath, newContent);
         return true;
     } catch {
         return false;
@@ -185,7 +96,14 @@ export async function patchWorkbench(context: vscode.ExtensionContext, theme: 'm
 }
 
 async function _patchWorkbenchInternal(context: vscode.ExtensionContext, theme: 'minecraft' | 'subwaysurfers' | null, silent = false): Promise<void> {
-    const htmlPath = getWorkbenchHtmlPath();
+    const paths = getWorkbenchHtmlPaths(vscode.env.appRoot);
+    if (paths.length === 0) {
+        if (!silent) {
+            vscode.window.showErrorMessage('Parkour Background: Could not locate VS Code workbench file.');
+        }
+        return;
+    }
+    const htmlPath = paths[0];
     let html: string;
     let originalHtml: string;
 
@@ -230,7 +148,7 @@ async function _patchWorkbenchInternal(context: vscode.ExtensionContext, theme: 
     }
 
     try {
-        await fs.promises.writeFile(htmlPath, html, 'utf8');
+        await writeFileElevated(htmlPath, html);
     } catch (err: unknown) {
         if (!silent) {
             const code = (err as NodeJS.ErrnoException).code;
@@ -251,7 +169,7 @@ async function _patchWorkbenchInternal(context: vscode.ExtensionContext, theme: 
     const checksumOk = await updateProductJsonChecksum(htmlPath);
     if (!checksumOk) {
         try {
-            await fs.promises.writeFile(htmlPath, originalHtml, 'utf8');
+            await writeFileElevated(htmlPath, originalHtml);
         } catch (rollbackErr) {
             console.error('Parkour Background: Failed to rollback workbench.html after checksum update failure.', rollbackErr);
             if (!silent) {

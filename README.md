@@ -17,7 +17,7 @@ Add a semi-transparent Minecraft or Subway Surfers background image to your VS C
 
 Visual Studio Code version 1.85.0 or later. No additional extensions required.
 
-> **Note:** This extension patches VS Code's workbench HTML file to inject the background image. On first use it may request administrator credentials to update VS Code's integrity checksum (so the install is not flagged as corrupt). On **Windows**, run VS Code as Administrator the first time you enable a background. On **Linux**, you may need to run `sudo chown -R $(whoami) /usr/share/code` once.
+> **Note:** This extension patches VS Code's workbench HTML file to inject the background image. On first use it may request administrator credentials to update VS Code's integrity checksum (so the install is not flagged as corrupt). On **Windows**, run VS Code as Administrator the first time you enable a background. On **Linux**, you may be prompted for your password to authorize the change.
 
 ## Installation
 
@@ -62,7 +62,7 @@ Choose from:
 - VS Code reloads automatically after toggling. If it doesn't, run `Ctrl+Shift+P` → **Developer: Reload Window**.
 - **macOS:** If you see a permission error, enter your password when prompted, or run `sudo chown -R $(whoami) "/Applications/Visual Studio Code.app"` in Terminal.
 - **Windows:** Right-click the VS Code shortcut and select **Run as administrator**, enable the background, then relaunch normally.
-- **Linux:** Run `sudo chown -R $(whoami) /usr/share/code` (adjust path for your installation) then restart VS Code.
+- **Linux:** Enter your password when prompted by Polkit or the system authorization dialog.
 
 **"Installation appears corrupt" warning**
 - The extension updates VS Code's integrity checksum automatically when patching. If this warning appears, it means the checksum could not be written — follow the platform-specific permission steps above.
