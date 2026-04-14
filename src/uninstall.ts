@@ -6,7 +6,7 @@ const STYLE_ID = 'editor-background-image';
 const INJECTION_START = `<style id="${STYLE_ID}">`;
 const INJECTION_END = `</style><!-- /${STYLE_ID} -->`;
 
-function cleanup() {
+async function cleanup() {
   const possiblePaths: string[] = [];
 
   if (process.platform === 'win32') {
@@ -27,17 +27,19 @@ function cleanup() {
     }
   } else if (process.platform === 'linux') {
     try {
-      const release = fs.readFileSync('/proc/version', 'utf8').toLowerCase();
-      if (release.includes('microsoft') || release.includes('wsl')) {
+      const release = await fs.promises.readFile('/proc/version', 'utf8');
+      if (release.toLowerCase().includes('microsoft') || release.toLowerCase().includes('wsl')) {
         const usersDir = '/mnt/c/Users';
-        if (fs.existsSync(usersDir)) {
-          const users = fs.readdirSync(usersDir).filter(u => !['Public', 'Default', 'Default User', 'All Users'].includes(u) && !u.startsWith('.'));
+        try {
+          const users = (await fs.promises.readdir(usersDir)).filter(u => !['Public', 'Default', 'Default User', 'All Users'].includes(u) && !u.startsWith('.'));
           for (const user of users) {
             possiblePaths.push(
               `/mnt/c/Users/${user}/AppData/Local/Programs/Microsoft VS Code/resources/app/out/vs/code/electron-sandbox/workbench/workbench.html`,
               `/mnt/c/Users/${user}/AppData/Local/Programs/Microsoft VS Code/resources/app/out/vs/code/electron-browser/workbench/workbench.html`
             );
           }
+        } catch {
+          // Ignore directory read errors
         }
         possiblePaths.push(
             '/mnt/c/Program Files/Microsoft VS Code/resources/app/out/vs/code/electron-sandbox/workbench/workbench.html',
@@ -61,19 +63,22 @@ function cleanup() {
 
   for (const htmlPath of possiblePaths) {
     try {
-      if (fs.existsSync(htmlPath)) {
-        let content = fs.readFileSync(htmlPath, 'utf8');
-        const startIdx = content.indexOf(INJECTION_START);
-        const endIdx = content.indexOf(INJECTION_END);
-        
-        if (startIdx !== -1 && endIdx !== -1) {
-          content = content.slice(0, startIdx).trimEnd() + '\n\t' + content.slice(endIdx + INJECTION_END.length).trimStart();
-          fs.writeFileSync(htmlPath, content, 'utf8');
-          console.log(`Parkour Background removed from: ${htmlPath}`);
-        }
+      try {
+        await fs.promises.access(htmlPath, fs.constants.F_OK);
+      } catch {
+        continue;
       }
-    } catch (err) {
-      // Ignore errors for individual paths
+      let content = await fs.promises.readFile(htmlPath, 'utf8');
+      const startIdx = content.indexOf(INJECTION_START);
+      const endIdx = content.indexOf(INJECTION_END);
+      
+      if (startIdx !== -1 && endIdx !== -1) {
+        content = content.slice(0, startIdx).trimEnd() + '\n\t' + content.slice(endIdx + INJECTION_END.length).trimStart();
+        await fs.promises.writeFile(htmlPath, content, 'utf8');
+        console.log(`Parkour Background removed from: ${htmlPath}`);
+      }
+    } catch (err: any) {
+      console.error(`Failed to remove Parkour Background from: ${htmlPath} - ${err.message}`);
     }
   }
 }

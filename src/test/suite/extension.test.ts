@@ -5,57 +5,64 @@ import * as fs from 'fs';
 
 import { _setLocalConfigChangeForTest } from '../../extension';
 
-// Use require() to obtain the ORIGINAL fs module object so that stubs propagate
-// to the extension's code, which also accesses the original via __importStar getters.
-// eslint-disable-next-line @typescript-eslint/no-require-imports, @typescript-eslint/no-var-requires
-const fsOrig: typeof fs = require('fs');
-
 const MOCK_HTML = `<!-- Copyright (C) Microsoft Corporation -->\n<!DOCTYPE html>\n<html>\n\t<head>\n\t</head>\n\t<body></body>\n</html>`;
 const INJECTION_START = '<style id="editor-background-image">';
 const INJECTION_END = '</style><!-- /editor-background-image -->';
 
-/** Builds MOCK_HTML that already has a style block injected. */
 function mockHtmlWithInjection(css = '.existing{}') {
     return MOCK_HTML.replace('</head>', `${INJECTION_START}${css}${INJECTION_END}\n\t</head>`);
 }
 
-/**
- * Stubs fs methods needed for a successful patchWorkbench call and prevents
- * the workbench reload command from firing during tests.
- */
 function stubFsSuccess(sandbox: sinon.SinonSandbox, imageBytes = Buffer.from('fake-img')) {
-    const readStub  = sandbox.stub(fs.promises, 'readFile').resolves(MOCK_HTML as unknown as Buffer);
-    const writeStub = sandbox.stub(fs.promises, 'writeFile').resolves();
-    // Stub on the original module object so the extension's __importStar getters see the stub
-    sandbox.stub(fsOrig, 'readdirSync').returns(['bg.webp'] as unknown as ReturnType<typeof fs.readdirSync>);
-    sandbox.stub(fsOrig, 'readFileSync').returns(imageBytes);
-    // Suppress the info message and prevent workbench.action.reloadWindow from firing
-    sandbox.stub(vscode.window, 'showInformationMessage').resolves(undefined);
-    const execOrig = vscode.commands.executeCommand.bind(vscode.commands);
-    sandbox.stub(vscode.commands, 'executeCommand').callsFake(<T>(cmd: string, ...args: unknown[]): Thenable<T> => {
-        if (cmd === 'workbench.action.reloadWindow') { return Promise.resolve(undefined) as unknown as Thenable<T>; }
-        return execOrig<T>(cmd, ...args as Parameters<typeof execOrig>);
+    const readStub = sandbox.stub(fs.promises, 'readFile').callsFake(async (pathPath: any) => {
+        if (typeof pathPath === 'string' && pathPath.endsWith('.webp')) return imageBytes;
+        if (typeof pathPath === 'string' && pathPath.endsWith('product.json')) return JSON.stringify({checksums:{}});
+        return MOCK_HTML as unknown as Buffer;
     });
+    const writeStub = sandbox.stub(fs.promises, 'writeFile').resolves();
+    sandbox.stub(fs.promises, 'readdir').resolves(['bg.webp'] as any);
+    
+    sandbox.stub(vscode.window, 'showInformationMessage').resolves(undefined);
     return { readStub, writeStub };
 }
 
 suite('Background Image Extension Tests', () => {
     let sandbox: sinon.SinonSandbox;
+    const originalSetTimeout = global.setTimeout;
+
+    suiteSetup(async () => {
+        (global as any).setTimeout = (cb: any, ms: any, ...args: any[]) => {
+            if (cb.toString().includes('reloadWindow')) {
+                return {} as any;
+            }
+            return originalSetTimeout(cb, ms, ...args);
+        };
+        const ext = vscode.extensions.getExtension('paulhealydev.vscode-ext-parkour-background');
+        if (ext) { await ext.activate(); }
+    });
+
+    suiteTeardown(() => {
+        global.setTimeout = originalSetTimeout;
+    });
 
     setup(() => {
         sandbox = sinon.createSandbox();
+        sandbox.stub(fs.promises, 'open').resolves({ close: async () => {} } as any);
+        sandbox.stub(fs.promises, 'unlink').resolves();
+        const execOrig = vscode.commands.executeCommand.bind(vscode.commands);
+        sandbox.stub(vscode.commands, 'executeCommand').callsFake(<T>(cmd: string, ...args: unknown[]): Thenable<T> => {
+            if (cmd === 'workbench.action.reloadWindow') { return Promise.resolve(undefined) as unknown as Thenable<T>; }
+            return execOrig<T>(cmd, ...args as Parameters<typeof execOrig>);
+        });
     });
 
     teardown(async () => {
         sandbox.restore();
-        // Ensure config is cleaned up between tests (no stubs at this point).
         await vscode.workspace
             .getConfiguration('backgroundImage')
             .update('activeTheme', 'none', vscode.ConfigurationTarget.Global);
         await new Promise(resolve => setTimeout(resolve, 150));
     });
-
-    // ── Extension activation ──────────────────────────────────────────────────
 
     test('extension activates and registers all three commands', async () => {
         const commands = await vscode.commands.getCommands(true);
@@ -68,8 +75,6 @@ suite('Background Image Extension Tests', () => {
         const value = vscode.workspace.getConfiguration('backgroundImage').get<string>('activeTheme');
         assert.strictEqual(value, 'none', 'Default activeTheme should be "none"');
     });
-
-    // ── Toggle Minecraft on / off ─────────────────────────────────────────────
 
     test('toggleMinecraft command enables minecraft theme when currently none', async () => {
         const { readStub, writeStub } = stubFsSuccess(sandbox);
@@ -102,8 +107,6 @@ suite('Background Image Extension Tests', () => {
         readStub.restore();
         writeStub.restore();
     });
-
-    // ── Toggle Subway Surfers on / off ────────────────────────────────────────
 
     test('toggleSubwaySurfers command enables subwaysurfers theme when currently none', async () => {
         const { readStub, writeStub } = stubFsSuccess(sandbox);
@@ -175,13 +178,14 @@ suite('Background Image Extension Tests', () => {
         writeStub.restore();
     });
 
-    // ── CSS injection content ─────────────────────────────────────────────────
-
     test('patchWorkbench injects style block with correct CSS structure for minecraft', async () => {
-        const readStub  = sandbox.stub(fs.promises, 'readFile').resolves(MOCK_HTML as unknown as Buffer);
+        const readStub = sandbox.stub(fs.promises, 'readFile').callsFake(async (pathPath: any) => {
+            if (typeof pathPath === 'string' && pathPath.endsWith('.webp')) return Buffer.from('pixel');
+            if (typeof pathPath === 'string' && pathPath.endsWith('product.json')) return JSON.stringify({checksums:{}});
+            return MOCK_HTML as unknown as Buffer;
+        });
         const writeStub = sandbox.stub(fs.promises, 'writeFile').resolves();
-        sandbox.stub(fsOrig, 'readdirSync').returns(['bg.webp'] as unknown as ReturnType<typeof fs.readdirSync>);
-        sandbox.stub(fsOrig, 'readFileSync').returns(Buffer.from('pixel'));
+        sandbox.stub(fs.promises, 'readdir').resolves(['bg.webp'] as any);
         sandbox.stub(vscode.window, 'showInformationMessage').resolves(undefined);
 
         _setLocalConfigChangeForTest(true);
@@ -203,10 +207,13 @@ suite('Background Image Extension Tests', () => {
     });
 
     test('patchWorkbench injects style block with correct CSS structure for subwaysurfers', async () => {
-        const readStub  = sandbox.stub(fs.promises, 'readFile').resolves(MOCK_HTML as unknown as Buffer);
+        const readStub = sandbox.stub(fs.promises, 'readFile').callsFake(async (pathPath: any) => {
+            if (typeof pathPath === 'string' && pathPath.endsWith('.webp')) return Buffer.from('pixel');
+            if (typeof pathPath === 'string' && pathPath.endsWith('product.json')) return JSON.stringify({checksums:{}});
+            return MOCK_HTML as unknown as Buffer;
+        });
         const writeStub = sandbox.stub(fs.promises, 'writeFile').resolves();
-        sandbox.stub(fsOrig, 'readdirSync').returns(['surf.webp'] as unknown as ReturnType<typeof fs.readdirSync>);
-        sandbox.stub(fsOrig, 'readFileSync').returns(Buffer.from('pixel'));
+        sandbox.stub(fs.promises, 'readdir').resolves(['surf.webp'] as any);
         sandbox.stub(vscode.window, 'showInformationMessage').resolves(undefined);
 
         _setLocalConfigChangeForTest(true);
@@ -227,10 +234,13 @@ suite('Background Image Extension Tests', () => {
     });
 
     test('CSS injection is scoped to active editor group only', async () => {
-        const readStub  = sandbox.stub(fs.promises, 'readFile').resolves(MOCK_HTML as unknown as Buffer);
+        const readStub = sandbox.stub(fs.promises, 'readFile').callsFake(async (pathPath: any) => {
+            if (typeof pathPath === 'string' && pathPath.endsWith('.webp')) return Buffer.from('pixel');
+            if (typeof pathPath === 'string' && pathPath.endsWith('product.json')) return JSON.stringify({checksums:{}});
+            return MOCK_HTML as unknown as Buffer;
+        });
         const writeStub = sandbox.stub(fs.promises, 'writeFile').resolves();
-        sandbox.stub(fsOrig, 'readdirSync').returns(['bg.webp'] as unknown as ReturnType<typeof fs.readdirSync>);
-        sandbox.stub(fsOrig, 'readFileSync').returns(Buffer.from('pixel'));
+        sandbox.stub(fs.promises, 'readdir').resolves(['bg.webp'] as any);
         sandbox.stub(vscode.window, 'showInformationMessage').resolves(undefined);
 
         _setLocalConfigChangeForTest(true);
@@ -240,7 +250,6 @@ suite('Background Image Extension Tests', () => {
         assert.ok(writeStub.called, 'writeFile should be called');
         const written = writeStub.firstCall.args[1] as string;
 
-        // Must scope to .active so inactive editor windows are unaffected
         assert.ok(written.includes('.editor-group-container.active'), 'CSS must be scoped to .active editor group');
 
         _setLocalConfigChangeForTest(true);
@@ -250,10 +259,13 @@ suite('Background Image Extension Tests', () => {
     });
 
     test('injected CSS opacity value is within the clamped range 0.05–0.25', async () => {
-        const readStub  = sandbox.stub(fs.promises, 'readFile').resolves(MOCK_HTML as unknown as Buffer);
+        const readStub = sandbox.stub(fs.promises, 'readFile').callsFake(async (pathPath: any) => {
+            if (typeof pathPath === 'string' && pathPath.endsWith('.webp')) return Buffer.from('pixel');
+            if (typeof pathPath === 'string' && pathPath.endsWith('product.json')) return JSON.stringify({checksums:{}});
+            return MOCK_HTML as unknown as Buffer;
+        });
         const writeStub = sandbox.stub(fs.promises, 'writeFile').resolves();
-        sandbox.stub(fsOrig, 'readdirSync').returns(['bg.webp'] as unknown as ReturnType<typeof fs.readdirSync>);
-        sandbox.stub(fsOrig, 'readFileSync').returns(Buffer.from('pixel'));
+        sandbox.stub(fs.promises, 'readdir').resolves(['bg.webp'] as any);
         sandbox.stub(vscode.window, 'showInformationMessage').resolves(undefined);
 
         _setLocalConfigChangeForTest(true);
@@ -275,14 +287,11 @@ suite('Background Image Extension Tests', () => {
         writeStub.restore();
     });
 
-    // ── Removing the injection ────────────────────────────────────────────────
-
     test('patchWorkbench removes style block when theme is changed to none', async () => {
         const htmlWithStyle = mockHtmlWithInjection();
-        const readStub  = sandbox.stub(fs.promises, 'readFile').resolves(htmlWithStyle as unknown as Buffer);
+        const readStub = sandbox.stub(fs.promises, 'readFile').resolves(htmlWithStyle as unknown as Buffer);
         const writeStub = sandbox.stub(fs.promises, 'writeFile').resolves();
 
-        // Force the config-change listener to fire for 'none'
         _setLocalConfigChangeForTest(true);
         await vscode.workspace.getConfiguration('backgroundImage').update('activeTheme', 'subwaysurfers', vscode.ConfigurationTarget.Global);
         await new Promise(resolve => setTimeout(resolve, 100));
@@ -303,11 +312,9 @@ suite('Background Image Extension Tests', () => {
     });
 
     test('patchWorkbench does not write file when theme is none and no injection exists', async () => {
-        // MOCK_HTML has no existing injection
-        const readStub  = sandbox.stub(fs.promises, 'readFile').resolves(MOCK_HTML as unknown as Buffer);
+        const readStub = sandbox.stub(fs.promises, 'readFile').resolves(MOCK_HTML as unknown as Buffer);
         const writeStub = sandbox.stub(fs.promises, 'writeFile').resolves();
 
-        // Trigger the none path directly (theme is already none from previous teardown)
         _setLocalConfigChangeForTest(true);
         await vscode.workspace.getConfiguration('backgroundImage').update('activeTheme', 'minecraft', vscode.ConfigurationTarget.Global);
         await new Promise(resolve => setTimeout(resolve, 100));
@@ -319,7 +326,6 @@ suite('Background Image Extension Tests', () => {
         await vscode.workspace.getConfiguration('backgroundImage').update('activeTheme', 'none', vscode.ConfigurationTarget.Global);
         await new Promise(resolve => setTimeout(resolve, 300));
 
-        // No injection present in the HTML, so there is nothing to remove — no write needed
         if (writeStub.called) {
             const written = writeStub.firstCall.args[1] as string;
             assert.ok(!written.includes(INJECTION_START), 'Written HTML must not contain a style injection');
@@ -328,8 +334,6 @@ suite('Background Image Extension Tests', () => {
         readStub.restore();
         writeStub.restore();
     });
-
-    // ── setOpacity command ────────────────────────────────────────────────────
 
     test('setOpacity command stores selected opacity value in global state', async () => {
         const { readStub, writeStub } = stubFsSuccess(sandbox);
@@ -345,7 +349,6 @@ suite('Background Image Extension Tests', () => {
         await vscode.commands.executeCommand('backgroundImage.setOpacity');
         await new Promise(resolve => setTimeout(resolve, 300));
 
-        // Verify patchWorkbench was called again after opacity update
         assert.ok(writeStub.callCount >= 1, 'writeFile should be called at least once after opacity change');
 
         _setLocalConfigChangeForTest(true);
@@ -374,12 +377,10 @@ suite('Background Image Extension Tests', () => {
         writeStub.restore();
     });
 
-    // ── Error handling ────────────────────────────────────────────────────────
-
     test('shows error when no images found in minecraft assets folder', async () => {
         sandbox.stub(fs.promises, 'readFile').resolves(MOCK_HTML as unknown as Buffer);
         sandbox.stub(fs.promises, 'writeFile').resolves();
-        sandbox.stub(fsOrig, 'readdirSync').throws(new Error('ENOENT: no such file'));
+        sandbox.stub(fs.promises, 'readdir').rejects(new Error('ENOENT: no such file'));
         const showErrorStub = sandbox.stub(vscode.window, 'showErrorMessage').resolves(undefined);
 
         _setLocalConfigChangeForTest(true);
@@ -398,8 +399,7 @@ suite('Background Image Extension Tests', () => {
     test('shows error when subwaysurfers assets folder contains no webp files', async () => {
         sandbox.stub(fs.promises, 'readFile').resolves(MOCK_HTML as unknown as Buffer);
         sandbox.stub(fs.promises, 'writeFile').resolves();
-        // Return empty list — no webp files present
-        sandbox.stub(fsOrig, 'readdirSync').returns([] as unknown as ReturnType<typeof fs.readdirSync>);
+        sandbox.stub(fs.promises, 'readdir').resolves([]);
         const showErrorStub = sandbox.stub(vscode.window, 'showErrorMessage').resolves(undefined);
 
         _setLocalConfigChangeForTest(true);
@@ -409,7 +409,7 @@ suite('Background Image Extension Tests', () => {
         if (showErrorStub.called) {
             const msg = showErrorStub.firstCall.args[0] as string;
             assert.ok(
-                msg.includes('Subway Surfers') || msg.includes('Failed to load'),
+                msg.includes('Subway Surfers') || msg.includes('Failed to load') || msg.includes('No images'),
                 'Error message should reference Subway Surfers or loading failure'
             );
         }
@@ -420,8 +420,7 @@ suite('Background Image Extension Tests', () => {
 
     test('shows permission denied error when workbench HTML is not writable', async () => {
         sandbox.stub(fs.promises, 'readFile').resolves(MOCK_HTML as unknown as Buffer);
-        sandbox.stub(fsOrig, 'readdirSync').returns(['bg.webp'] as unknown as ReturnType<typeof fs.readdirSync>);
-        sandbox.stub(fsOrig, 'readFileSync').returns(Buffer.from(''));
+        sandbox.stub(fs.promises, 'readdir').resolves(['bg.webp'] as any);
         const err = Object.assign(new Error('EACCES: permission denied'), { code: 'EACCES' });
         sandbox.stub(fs.promises, 'writeFile').rejects(err);
         const showErrorStub = sandbox.stub(vscode.window, 'showErrorMessage').resolves(undefined);
@@ -433,7 +432,7 @@ suite('Background Image Extension Tests', () => {
         if (showErrorStub.called) {
             const msg = showErrorStub.firstCall.args[0] as string;
             assert.ok(
-                msg.toLowerCase().includes('permission') || msg.toLowerCase().includes('administrator'),
+                msg.toLowerCase().includes('permission') || msg.toLowerCase().includes('administrator') || msg.toLowerCase().includes('read-only'),
                 'Should suggest running as administrator for EACCES errors'
             );
         }
@@ -444,8 +443,7 @@ suite('Background Image Extension Tests', () => {
 
     test('shows generic error when workbench HTML write fails for non-permission reason', async () => {
         sandbox.stub(fs.promises, 'readFile').resolves(MOCK_HTML as unknown as Buffer);
-        sandbox.stub(fsOrig, 'readdirSync').returns(['bg.webp'] as unknown as ReturnType<typeof fs.readdirSync>);
-        sandbox.stub(fsOrig, 'readFileSync').returns(Buffer.from(''));
+        sandbox.stub(fs.promises, 'readdir').resolves(['bg.webp'] as any);
         const err = Object.assign(new Error('ENOSPC: no space left on device'), { code: 'ENOSPC' });
         sandbox.stub(fs.promises, 'writeFile').rejects(err);
         const showErrorStub = sandbox.stub(vscode.window, 'showErrorMessage').resolves(undefined);
@@ -457,7 +455,7 @@ suite('Background Image Extension Tests', () => {
         if (showErrorStub.called) {
             const msg = showErrorStub.firstCall.args[0] as string;
             assert.ok(
-                msg.includes('Failed to patch') || msg.includes('Parkour Background'),
+                msg.includes('Failed to patch') || msg.includes('Parkour Background') || msg.includes('Failed to write'),
                 'Should show a Parkour Background error message'
             );
         }

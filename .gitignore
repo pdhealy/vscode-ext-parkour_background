@@ -3,6 +3,7 @@ out/
 
 # Documentation
 docs/
+.planning/
 
 # Dependencies
 node_modules/
