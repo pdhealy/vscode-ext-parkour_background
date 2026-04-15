@@ -144,6 +144,8 @@ async function _patchWorkbenchInternal(context: vscode.ExtensionContext, install
                     }
                 } catch (e) {
                     console.error('Parkour Background: Failed to load state', e);
+                    const styleEl = document.getElementById('parkour-dynamic-style');
+                    if (styleEl) styleEl.remove();
                 }
             } else {
                 const styleEl = document.getElementById('parkour-dynamic-style');

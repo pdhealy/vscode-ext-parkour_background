@@ -101,9 +101,6 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
             ? vscode.ConfigurationTarget.Workspace 
             : vscode.ConfigurationTarget.Global;
         await config.update('activeTheme', current === 'minecraft' ? 'none' : 'minecraft', target);
-        if (target === vscode.ConfigurationTarget.Workspace) {
-            await config.update('activeTheme', current === 'minecraft' ? 'none' : 'minecraft', vscode.ConfigurationTarget.Global); // keep global for tests
-        }
     }));
 
     context.subscriptions.push(vscode.commands.registerCommand('backgroundImage.toggleSubwaySurfers', async () => {
