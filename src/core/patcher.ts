@@ -4,7 +4,7 @@ import * as path from 'path';
 import * as crypto from 'crypto';
 import * as os from 'os';
 import { getWorkbenchHtmlPaths } from '../utils/paths';
-import { INJECTION_START, INJECTION_END, buildCss } from '../utils/css';
+import { INJECTION_START, INJECTION_END } from '../utils/css';
 import { writeFileElevated } from '../utils/fs';
 
 function permissionFixInstructions(): string {
@@ -15,17 +15,6 @@ function permissionFixInstructions(): string {
         return 'Authorize the password prompt or fix VS Code permissions.';
     }
     return 'Authorize the password prompt or ensure write access.';
-}
-
-async function getRandomWebpFromFolder(folderPath: string): Promise<string | null> {
-    try {
-        const files = (await fs.promises.readdir(folderPath)).filter(f => f.toLowerCase().endsWith('.webp'));
-        if (files.length === 0) { return null; }
-        const idx = Math.floor(Math.random() * files.length);
-        return path.join(folderPath, files[idx]);
-    } catch {
-        return null;
-    }
 }
 
 async function updateProductJsonChecksum(htmlPath: string): Promise<boolean> {
@@ -80,7 +69,7 @@ async function releaseLock(): Promise<void> {
     }
 }
 
-export async function patchWorkbench(context: vscode.ExtensionContext, theme: 'minecraft' | 'subwaysurfers' | null, silent = false): Promise<void> {
+export async function patchWorkbench(context: vscode.ExtensionContext, install: boolean, silent = false): Promise<void> {
     if (!(await acquireLock())) {
         if (!silent) {
             vscode.window.showErrorMessage('Parkour Background: Could not acquire lock to patch workbench. Try again.');
@@ -89,13 +78,13 @@ export async function patchWorkbench(context: vscode.ExtensionContext, theme: 'm
     }
 
     try {
-        await _patchWorkbenchInternal(context, theme, silent);
+        await _patchWorkbenchInternal(context, install, silent);
     } finally {
         await releaseLock();
     }
 }
 
-async function _patchWorkbenchInternal(context: vscode.ExtensionContext, theme: 'minecraft' | 'subwaysurfers' | null, silent = false): Promise<void> {
+async function _patchWorkbenchInternal(context: vscode.ExtensionContext, install: boolean, silent = false): Promise<void> {
     const paths = getWorkbenchHtmlPaths(vscode.env.appRoot);
     if (paths.length === 0) {
         if (!silent) {
@@ -126,23 +115,48 @@ async function _patchWorkbenchInternal(context: vscode.ExtensionContext, theme: 
         html = html.slice(0, startIdx).trimEnd() + '\n\t' + html.slice(endIdx + INJECTION_END.length).trimStart();
     }
 
-    if (theme !== null) {
+    if (install) {
         if (alreadyInjected && silent) { return; }
 
-        const folderPath = path.join(context.extensionPath, 'assets', theme === 'minecraft' ? 'minecraft' : 'subwaysurfers');
-        const imagePath = await getRandomWebpFromFolder(folderPath);
-
-        if (!imagePath) {
-            if (!silent) {
-                const label = theme === 'minecraft' ? 'Minecraft' : 'Subway Surfers';
-                vscode.window.showErrorMessage(`Parkour Background: No images found for the ${label} theme.`);
+        const baseUri = context.extensionUri.toString().replace('file://', 'vscode-file://vscode-app');
+        const scriptContent = `
+        const applyParkourBackground = async () => {
+            const bodyStyle = getComputedStyle(document.body);
+            const shadowColor = bodyStyle.getPropertyValue('--vscode-scrollbar-shadow').trim();
+            const match = shadowColor.match(/#0000([0-9a-fA-F]{2})00/i);
+            if (match) {
+                const id = match[1].toLowerCase();
+                const stateUrl = '${baseUri}/parkour-state.json?t=' + Date.now();
+                try {
+                    const r = await fetch(stateUrl);
+                    const state = await r.json();
+                    const css = state[id];
+                    let styleEl = document.getElementById('parkour-dynamic-style');
+                    if (css) {
+                        if (!styleEl) {
+                            styleEl = document.createElement('style');
+                            styleEl.id = 'parkour-dynamic-style';
+                            document.head.appendChild(styleEl);
+                        }
+                        styleEl.textContent = css;
+                    } else if (styleEl) {
+                        styleEl.remove();
+                    }
+                } catch (e) {
+                    console.error('Parkour Background: Failed to load state', e);
+                }
+            } else {
+                const styleEl = document.getElementById('parkour-dynamic-style');
+                if (styleEl) styleEl.remove();
             }
-            return;
-        }
+        };
+        const observer = new MutationObserver(applyParkourBackground);
+        observer.observe(document.body, { attributes: true, attributeFilter: ['style'] });
+        setTimeout(applyParkourBackground, 1000);
+        `;
 
-        const opacity = context.globalState.get<number>('backgroundImage.opacity', 0.15);
-        const css = await buildCss(imagePath, Math.min(0.25, Math.max(0.05, opacity)));
-        html = html.replace('</head>', `${css}\n\t</head>`);
+        const jsInjection = `${INJECTION_START}\n\t${scriptContent}\n\t${INJECTION_END}`;
+        html = html.replace('</head>', `${jsInjection}\n\t</head>`);
     } else {
         if (!alreadyInjected) { return; }
     }
@@ -185,8 +199,8 @@ async function _patchWorkbenchInternal(context: vscode.ExtensionContext, theme: 
     }
 
     if (!silent) {
-        const state = theme !== null ? 'enabled' : 'disabled';
-        vscode.window.showInformationMessage(`Parkour Background ${state}. Reloading VS Code...`);
+        const state = install ? 'enabled' : 'disabled';
+        vscode.window.showInformationMessage(`Parkour Background script ${state}. Reloading VS Code...`);
         setTimeout(() => vscode.commands.executeCommand('workbench.action.reloadWindow'), 1000);
     }
 }

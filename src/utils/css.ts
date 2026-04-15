@@ -1,9 +1,9 @@
 import * as fs from 'fs';
 import * as path from 'path';
 
-export const STYLE_ID = 'editor-background-image';
-export const INJECTION_START = `<style id="${STYLE_ID}">`;
-export const INJECTION_END = `</style><!-- /${STYLE_ID} -->`;
+export const SCRIPT_ID = 'parkour-background-loader';
+export const INJECTION_START = `<script id="${SCRIPT_ID}">`;
+export const INJECTION_END = `</script><!-- /${SCRIPT_ID} -->`;
 
 export async function buildCss(imagePath: string, opacity: number): Promise<string> {
     const imageData = await fs.promises.readFile(imagePath);
@@ -12,7 +12,6 @@ export async function buildCss(imagePath: string, opacity: number): Promise<stri
     const mimeType = ext === '.webp' ? 'image/webp' : 'image/png';
     const dataUri = `data:${mimeType};base64,${base64}`;
     return [
-        INJECTION_START,
         `.editor-group-container.active .monaco-editor .overflow-guard { position: relative; }`,
         `.editor-group-container.active .monaco-editor .overflow-guard::before {`,
         `  content: '';`,
@@ -25,7 +24,6 @@ export async function buildCss(imagePath: string, opacity: number): Promise<stri
         `  opacity: ${opacity};`,
         `  pointer-events: none;`,
         `  z-index: 50;`,
-        `}`,
-        INJECTION_END,
+        `}`
     ].join('\n');
 }

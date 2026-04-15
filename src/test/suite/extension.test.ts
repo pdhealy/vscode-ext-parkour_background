@@ -6,8 +6,8 @@ import * as fs from 'fs';
 import { _setLocalConfigChangeForTest } from '../../extension';
 
 const MOCK_HTML = `<!-- Copyright (C) Microsoft Corporation -->\n<!DOCTYPE html>\n<html>\n\t<head>\n\t</head>\n\t<body></body>\n</html>`;
-const INJECTION_START = '<style id="editor-background-image">';
-const INJECTION_END = '</style><!-- /editor-background-image -->';
+const INJECTION_START = '<script id="parkour-background-loader">';
+const INJECTION_END = '</script><!-- /parkour-background-loader -->';
 
 function mockHtmlWithInjection(css = '.existing{}') {
     return MOCK_HTML.replace('</head>', `${INJECTION_START}${css}${INJECTION_END}\n\t</head>`);
@@ -193,12 +193,14 @@ suite('Background Image Extension Tests', () => {
         await new Promise(resolve => setTimeout(resolve, 300));
 
         assert.ok(writeStub.called, 'writeFile should be called when enabling minecraft');
-        const written = writeStub.firstCall.args[1] as string;
+        
+        const htmlWriteCall = writeStub.getCalls().find(c => (c.args[0] as string).includes('workbench.html'));
+        assert.ok(htmlWriteCall, 'Should write to workbench.html');
+        const written = htmlWriteCall!.args[1] as string;
 
-        assert.ok(written.includes(INJECTION_START),          'Should include style tag open');
-        assert.ok(written.includes(INJECTION_END),            'Should include style tag close marker');
-        assert.ok(written.includes('overflow-guard::before'), 'Should target ::before pseudo-element');
-        assert.ok(written.includes('background-image: url("data:image/webp;base64,'), 'Should embed base64 webp data URI');
+        assert.ok(written.includes(INJECTION_START),          'Should include script tag open');
+        assert.ok(written.includes(INJECTION_END),            'Should include script tag close marker');
+        assert.ok(written.includes('parkour-state.json'),     'Should reference state file');
 
         _setLocalConfigChangeForTest(true);
         await vscode.workspace.getConfiguration('backgroundImage').update('activeTheme', 'none', vscode.ConfigurationTarget.Global);
@@ -221,11 +223,13 @@ suite('Background Image Extension Tests', () => {
         await new Promise(resolve => setTimeout(resolve, 300));
 
         assert.ok(writeStub.called, 'writeFile should be called when enabling subwaysurfers');
-        const written = writeStub.firstCall.args[1] as string;
+        
+        const htmlWriteCall = writeStub.getCalls().find(c => (c.args[0] as string).includes('workbench.html'));
+        assert.ok(htmlWriteCall, 'Should write to workbench.html');
+        const written = htmlWriteCall.args[1] as string;
 
-        assert.ok(written.includes(INJECTION_START), 'Should include style tag open');
-        assert.ok(written.includes('overflow-guard::before'), 'Should target ::before pseudo-element');
-        assert.ok(written.includes('background-image: url("data:image/webp;base64,'), 'Should embed base64 webp data URI');
+        assert.ok(written.includes(INJECTION_START), 'Should include script tag open');
+        assert.ok(written.includes('parkour-state.json'), 'Should reference state file');
 
         _setLocalConfigChangeForTest(true);
         await vscode.workspace.getConfiguration('backgroundImage').update('activeTheme', 'none', vscode.ConfigurationTarget.Global);
@@ -248,9 +252,12 @@ suite('Background Image Extension Tests', () => {
         await new Promise(resolve => setTimeout(resolve, 300));
 
         assert.ok(writeStub.called, 'writeFile should be called');
-        const written = writeStub.firstCall.args[1] as string;
+        
+        const stateWriteCall = writeStub.getCalls().find(c => (c.args[0] as string).includes('parkour-state.json'));
+        assert.ok(stateWriteCall, 'Should write to parkour-state.json');
+        const writtenState = stateWriteCall.args[1] as string;
 
-        assert.ok(written.includes('.editor-group-container.active'), 'CSS must be scoped to .active editor group');
+        assert.ok(writtenState.includes('.editor-group-container.active'), 'CSS must be scoped to .active editor group');
 
         _setLocalConfigChangeForTest(true);
         await vscode.workspace.getConfiguration('backgroundImage').update('activeTheme', 'none', vscode.ConfigurationTarget.Global);
@@ -273,9 +280,12 @@ suite('Background Image Extension Tests', () => {
         await new Promise(resolve => setTimeout(resolve, 300));
 
         assert.ok(writeStub.called, 'writeFile should be called');
-        const written = writeStub.firstCall.args[1] as string;
+        
+        const stateWriteCall = writeStub.getCalls().find(c => (c.args[0] as string).includes('parkour-state.json'));
+        assert.ok(stateWriteCall, 'Should write to parkour-state.json');
+        const writtenState = stateWriteCall.args[1] as string;
 
-        const match = written.match(/opacity:\s*([\d.]+)/);
+        const match = writtenState.match(/opacity:\s*([\d.]+)/);
         assert.ok(match, 'CSS should contain an opacity property');
         const opacity = parseFloat(match![1]);
         assert.ok(opacity >= 0.05, `Opacity ${opacity} should be >= 0.05`);
@@ -302,10 +312,13 @@ suite('Background Image Extension Tests', () => {
         await new Promise(resolve => setTimeout(resolve, 300));
 
         assert.ok(writeStub.called, 'writeFile should be called to strip the existing injection');
-        const written = writeStub.firstCall.args[1] as string;
-        assert.ok(!written.includes(INJECTION_START), 'Style tag open should be removed');
-        assert.ok(!written.includes(INJECTION_END),   'Style tag close marker should be removed');
-        assert.ok(written.includes('</head>'),         'Remainder of HTML must be preserved');
+        const call = writeStub.getCalls().find(c => (c.args[0] as string).includes('workbench.html'));
+        assert.ok(call, 'Should have written to workbench.html');
+        const written = call!.args[1] as string;
+        
+        assert.ok(!written.includes(INJECTION_START), 'Script tag open should be removed');
+        assert.ok(!written.includes(INJECTION_END),   'Script tag close marker should be removed');
+        assert.ok(written.includes('</head>'),        `Remainder of HTML must be preserved. Actual written: ${written}`);
 
         readStub.restore();
         writeStub.restore();
@@ -327,8 +340,8 @@ suite('Background Image Extension Tests', () => {
         await new Promise(resolve => setTimeout(resolve, 300));
 
         if (writeStub.called) {
-            const written = writeStub.firstCall.args[1] as string;
-            assert.ok(!written.includes(INJECTION_START), 'Written HTML must not contain a style injection');
+            const htmlWriteCall = writeStub.getCalls().find(c => (c.args[0] as string).includes('workbench.html'));
+            assert.ok(!htmlWriteCall, 'Should NOT write to workbench.html if no injection exists and theme is none');
         }
 
         readStub.restore();
@@ -485,3 +498,4 @@ suite('Background Image Extension Tests', () => {
         await vscode.workspace.getConfiguration('backgroundImage').update('activeTheme', 'none', vscode.ConfigurationTarget.Global);
     });
 });
+

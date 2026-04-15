@@ -6,8 +6,8 @@ import * as fs from 'fs';
 const fsOrig: typeof fs = require('fs');
 
 const MOCK_HTML = `<!-- Copyright (C) Microsoft Corporation -->\n<!DOCTYPE html>\n<html>\n\t<head>\n\t</head>\n\t<body></body>\n</html>`;
-const INJECTION_START = '<style id="editor-background-image">';
-const INJECTION_END = '</style><!-- /editor-background-image -->';
+const INJECTION_START = '<script id="parkour-background-loader">';
+const INJECTION_END = '</script><!-- /parkour-background-loader -->';
 
 function mockHtmlWithInjection(css = '.existing{}') {
     return MOCK_HTML.replace('</head>', `${INJECTION_START}${css}${INJECTION_END}\n\t</head>`);
