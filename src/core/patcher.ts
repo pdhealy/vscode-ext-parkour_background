@@ -150,9 +150,8 @@ async function _patchWorkbenchInternal(context: vscode.ExtensionContext, install
                 if (styleEl) styleEl.remove();
             }
         };
-        const observer = new MutationObserver(applyParkourBackground);
-        observer.observe(document.body, { attributes: true, attributeFilter: ['style'] });
-        setTimeout(applyParkourBackground, 1000);
+        setInterval(applyParkourBackground, 1000);
+        setTimeout(applyParkourBackground, 100);
         `;
 
         const jsInjection = `${INJECTION_START}\n\t${scriptContent}\n\t${INJECTION_END}`;

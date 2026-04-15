@@ -114,9 +114,6 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
             ? vscode.ConfigurationTarget.Workspace 
             : vscode.ConfigurationTarget.Global;
         await config.update('activeTheme', current === 'subwaysurfers' ? 'none' : 'subwaysurfers', target);
-        if (target === vscode.ConfigurationTarget.Workspace) {
-            await config.update('activeTheme', current === 'subwaysurfers' ? 'none' : 'subwaysurfers', vscode.ConfigurationTarget.Global); // keep global for tests
-        }
     }));
 
     context.subscriptions.push(vscode.workspace.onDidChangeConfiguration(async (e) => {
@@ -166,4 +163,5 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
 }
 
 export function deactivate(): void {
+}void {
 }

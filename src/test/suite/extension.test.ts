@@ -304,7 +304,7 @@ suite('Background Image Extension Tests', () => {
 
         _setLocalConfigChangeForTest(true);
         await vscode.workspace.getConfiguration('backgroundImage').update('activeTheme', 'subwaysurfers', vscode.ConfigurationTarget.Global);
-        await new Promise(resolve => setTimeout(resolve, 100));
+        await new Promise(resolve => setTimeout(resolve, 300));
         writeStub.resetHistory();
 
         _setLocalConfigChangeForTest(true);
@@ -330,7 +330,7 @@ suite('Background Image Extension Tests', () => {
 
         _setLocalConfigChangeForTest(true);
         await vscode.workspace.getConfiguration('backgroundImage').update('activeTheme', 'minecraft', vscode.ConfigurationTarget.Global);
-        await new Promise(resolve => setTimeout(resolve, 100));
+        await new Promise(resolve => setTimeout(resolve, 300));
         writeStub.resetHistory();
         readStub.resetBehavior();
         readStub.resolves(MOCK_HTML as unknown as Buffer);
