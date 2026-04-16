@@ -1,6 +1,14 @@
 import * as path from 'path';
 import * as fs from 'fs';
 
+export function getProductJsonPath(appRoot: string): string {
+    return path.join(appRoot, 'product.json');
+}
+
+export function getAppOutDir(appRoot: string): string {
+    return path.join(appRoot, 'out');
+}
+
 export function getWorkbenchHtmlPaths(appRoot?: string): string[] {
     const subPaths = [
         ['out', 'vs', 'code', 'electron-sandbox', 'workbench', 'workbench.html'],

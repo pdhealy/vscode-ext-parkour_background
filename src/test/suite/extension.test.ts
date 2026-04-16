@@ -27,7 +27,6 @@ function stubFsSuccess(sandbox: sinon.SinonSandbox, imageBytes = Buffer.from('fa
 }
 
 async function activateExtension() {
-    (vscode.workspace as any)._clearListeners();
     const mockContext: vscode.ExtensionContext = {
         subscriptions: [],
         workspaceState: { get: () => undefined, update: () => Promise.resolve() },

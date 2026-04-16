@@ -2,7 +2,7 @@ import * as vscode from 'vscode';
 import * as fs from 'fs';
 import * as path from 'path';
 import { patchWorkbench } from './core/patcher';
-import { buildCss, STYLE_ID } from './utils/css';
+import { buildCss } from './utils/css';
 
 const CONFIG_KEY = 'backgroundImage.activeTheme';
 
@@ -41,7 +41,8 @@ async function applyThemeForWindow(context: vscode.ExtensionContext, theme: stri
             return;
         }
         
-        const opacity = context.globalState.get<number>('backgroundImage.opacity', 0.15);
+        const config = vscode.workspace.getConfiguration('backgroundImage');
+        const opacity = config.get<number>('opacity', 0.15);
         const css = await buildCss(imagePath, Math.min(0.25, Math.max(0.05, opacity)));
         await patchWorkbench(context, css, silent);
     } else {
@@ -50,6 +51,36 @@ async function applyThemeForWindow(context: vscode.ExtensionContext, theme: stri
 }
 
 export async function activate(context: vscode.ExtensionContext): Promise<void> {
+
+    // Save appRoot for the uninstaller to use
+    const appRootFile = path.join(context.extensionPath, 'app-root.txt');
+    try {
+        await fs.promises.writeFile(appRootFile, vscode.env.appRoot, 'utf8');
+    } catch (err) {
+        console.error('Parkour Background: Failed to save app-root.txt', err);
+    }
+
+    context.subscriptions.push(vscode.commands.registerCommand('backgroundImage.uninstall', async () => {
+        const choice = await vscode.window.showWarningMessage(
+            'Are you sure you want to uninstall Parkour Background? This will toggle the background off and reload the window.',
+            'Uninstall'
+        );
+        if (choice !== 'Uninstall') { return; }
+        
+        await vscode.workspace.getConfiguration('backgroundImage').update('activeTheme', 'none', vscode.ConfigurationTarget.Global);
+        
+        // Ensure the CSS is removed and file patched immediately (silent = true)
+        await applyThemeForWindow(context, 'none', true);
+
+        try {
+            await vscode.commands.executeCommand('workbench.extensions.uninstallExtension', 'paulhealydev.vscode-ext-parkour-background');
+        } catch (err) {
+            console.error('Failed to uninstall extension programmatically', err);
+            vscode.window.showErrorMessage('Could not uninstall extension automatically. Please uninstall it manually from the Extensions view.');
+        }
+        
+        vscode.commands.executeCommand('workbench.action.reloadWindow');
+    }));
 
     context.subscriptions.push(vscode.commands.registerCommand('backgroundImage.toggleMinecraft', async () => {
         const config = vscode.workspace.getConfiguration('backgroundImage');
@@ -73,12 +104,12 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     }));
 
     context.subscriptions.push(vscode.workspace.onDidChangeConfiguration(async (e) => {
-        if (!e.affectsConfiguration(CONFIG_KEY)) { return; }
+        if (!e.affectsConfiguration(CONFIG_KEY) && !e.affectsConfiguration('backgroundImage.opacity')) { return; }
         const config = vscode.workspace.getConfiguration('backgroundImage');
         const theme = config.get<string>('activeTheme', 'none');
         updateMenuContext(theme === 'minecraft', theme === 'subwaysurfers');
 
-        if (!_localConfigChange) { return; }
+        if (!_localConfigChange && e.affectsConfiguration(CONFIG_KEY)) { return; }
         _localConfigChange = false;
 
         await applyThemeForWindow(context, theme, false);
@@ -91,7 +122,8 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
             { label: '15% — Default', value: 0.15 },
             { label: '25% — High',    value: 0.25 },
         ];
-        const current = context.globalState.get<number>('backgroundImage.opacity', 0.15);
+        const config = vscode.workspace.getConfiguration('backgroundImage');
+        const current = config.get<number>('opacity', 0.15);
         const items = PRESETS.map(p => ({
             label: p.label,
             description: p.value === current ? '(current)' : undefined,
@@ -101,11 +133,8 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
             placeHolder: 'Select background image opacity',
         });
         if (!picked) { return; }
-        await context.globalState.update('backgroundImage.opacity', picked.value);
-        const theme = vscode.workspace.getConfiguration('backgroundImage').get<string>('activeTheme', 'none');
-        if (theme === 'minecraft' || theme === 'subwaysurfers') {
-            await applyThemeForWindow(context, theme, false);
-        }
+        _localConfigChange = true;
+        await config.update('opacity', picked.value, vscode.ConfigurationTarget.Global);
     }));
 
     // Re-apply or remove theme on startup.

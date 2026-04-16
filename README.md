@@ -1,84 +1,78 @@
 # Parkour Background
 
-Add a semi-transparent Minecraft or Subway Surfers background image to your VS Code editor — a fun, lightweight way to personalise your coding environment.
+Enhance your coding environment with immersive **Parkour gameplay visuals**. This extension adds a semi-transparent Minecraft or Subway Surfers background to your VS Code editor—providing a modern, high-energy aesthetic while maintaining full code legibility.
 
 ![Parkour Background screenshot](https://raw.githubusercontent.com/pdhealy/vscode-ext-parkour_background/main/docs/screenshots/image.png)
 
+## Overview
+
+Parkour Background is designed for developers who enjoy the "vibes" of parkour gameplay clips. It intelligently patches the VS Code workbench to inject high-quality WebP visuals behind your code, creating a unique and personalized workspace.
+
 ## Features
 
-- 🎮 Choose between **Minecraft** or **Subway Surfers** background themes
-- 🖼️ Background is randomly selected from a pool of images each time you toggle it on
-- ✅ Code remains fully legible — background is rendered behind editor text at low opacity
-- ⚡ Toggle on/off via **Command Palette** or **editor context menu**
-- 🎚️ Adjustable opacity (5% / 10% / 15% / 25%) via `Parkour Background: Set Opacity`
-- 🔄 Background persists across VS Code restarts — toggle off and on to pick a new random image
+- **Dynamic Themes:** Choose between curated **Minecraft** or **Subway Surfers** gameplay visuals.
+- **Randomized Experience:** A new visual is randomly selected from a diverse pool each time a theme is enabled.
+- **Optimized Legibility:** Visuals are rendered at low opacity behind the editor text, ensuring your code remains the primary focus.
+- **One-Click Control:** Toggle visuals instantly via the **Command Palette** or the **Editor Context Menu**.
+- **Granular Opacity:** Fine-tune the intensity (5%, 10%, 15%, or 25%) using the `Parkour Background: Set Opacity` command.
+- **Persistent State:** Your chosen visual and opacity settings persist across VS Code restarts.
 
 ## Requirements
 
-Visual Studio Code version 1.85.0 or later. No additional extensions required.
-
-> **Note:** This extension patches VS Code's workbench HTML file to inject the background image. On first use it may request administrator credentials to update VS Code's integrity checksum (so the install is not flagged as corrupt). On **Windows**, run VS Code as Administrator the first time you enable a background. On **Linux**, you may be prompted for your password to authorize the change.
+- **Visual Studio Code:** Version 1.85.0 or later.
+- **System Permissions:** The extension requires write access to VS Code's internal files to inject the visuals. See [Security & Permissions](#security--permissions) for details.
 
 ## Installation
 
 1. Install **Parkour Background** from the [VS Code Marketplace](https://marketplace.visualstudio.com).
-2. Enable a background theme using the Command Palette (see Usage below).
+2. Open the **Command Palette** (`Ctrl+Shift+P` / `Cmd+Shift+P`).
+3. Search for `Parkour Background (Minecraft): Toggle On/Off` or `Parkour Background (Subway Surfers): Toggle On/Off` to activate.
 
 ## Usage
 
-### Toggle Background On/Off
+### Toggling Visuals
+You can enable or disable the visuals using two methods:
+1. **Command Palette:** Search for the "Toggle On/Off" commands.
+2. **Editor Context Menu:** Right-click anywhere inside the editor text area and select the "Enable/Disable" options.
 
-**Command Palette** (`Ctrl+Shift+P` / `Cmd+Shift+P`):
-- `Parkour Background (Minecraft): Toggle On/Off`
-- `Parkour Background (Subway Surfers): Toggle On/Off`
+*Note: VS Code will automatically reload to apply the changes after toggling.*
 
-**Editor Context Menu** (right-click inside the editor):
-- **Enable / Disable Parkour Background (Minecraft)**
-- **Enable / Disable Parkour Background (Subway Surfers)**
+### Customizing Opacity
+Adjust the visual intensity to suit your lighting environment:
+1. Open the **Command Palette**.
+2. Select `Parkour Background: Set Opacity`.
+3. Choose from the available presets (Subtle to High).
 
-After toggling, VS Code will reload automatically to apply the change. The background persists across restarts.
+## Uninstallation (Recommended Method)
 
-### Set Opacity
+To ensure that all workbench modifications are correctly reverted and the integrity checksums are restored, we **strongly recommend** using the built-in uninstall command rather than the standard Extensions GUI.
 
-**Command Palette** → `Parkour Background: Set Opacity`
+1. Open the **Command Palette** (`Ctrl+Shift+P` / `Cmd+Shift+P`).
+2. Type and select `Parkour Background: Uninstall`.
+3. Confirm the uninstallation when prompted.
 
-Choose from:
-| Option | Opacity |
-|--------|---------|
-| 5% — Subtle | Very faint |
-| 10% — Low | Barely noticeable |
-| 15% — Default | Balanced |
-| 25% — High | Clearly visible |
+**Why use this command?** VS Code requires a window reload to fully disable the workbench patches. This command automates the cleanup, uninstalls the extension, and reloads the window in one seamless operation.
+
+## Security & Permissions
+
+This extension patches VS Code's `workbench.html` file to inject the required CSS.
+- **Windows:** You may need to run VS Code as Administrator the first time you enable a visual.
+- **macOS/Linux:** You may be prompted for your system password to authorize the file modification.
+- **Integrity Checksum:** The extension automatically updates VS Code's internal checksums to prevent "Installation appears corrupt" warnings.
+
+## Troubleshooting
+
+- **Visuals not appearing:** Ensure you have reloaded the window. If the auto-reload fails, run `Developer: Reload Window` from the Command Palette.
+- **Permission Errors:** If the extension fails to apply changes, verify that your user account has write permissions to the VS Code installation directory.
+- **Checksum Warnings:** If you see an integrity warning, it indicates a permission failure during the checksum update. Follow the [Security & Permissions](#security--permissions) guidelines.
 
 ## Extension Settings
 
 | Setting | Type | Default | Description |
 |---------|------|---------|-------------|
-| `backgroundImage.activeTheme` | `string` | `"none"` | Active theme: `"none"`, `"minecraft"`, or `"subwaysurfers"`. |
-
-## Troubleshooting
-
-**Background image does not appear after enabling**
-- VS Code reloads automatically after toggling. If it doesn't, run `Ctrl+Shift+P` → **Developer: Reload Window**.
-- **macOS:** If you see a permission error, enter your password when prompted, or run `sudo chown -R $(whoami) "/Applications/Visual Studio Code.app"` in Terminal.
-- **Windows:** Right-click the VS Code shortcut and select **Run as administrator**, enable the background, then relaunch normally.
-- **Linux:** Enter your password when prompted by Polkit or the system authorization dialog.
-
-**"Installation appears corrupt" warning**
-- The extension updates VS Code's integrity checksum automatically when patching. If this warning appears, it means the checksum could not be written — follow the platform-specific permission steps above.
-
-**Context menu item is missing**
-- Right-click must be performed inside the editor text area, not on the tab bar or scrollbar.
-- Ensure VSCode is version 1.85.0 or later.
-
-## Known Limitations
-
-- Per-window background control is not possible — VS Code's workbench HTML is a single shared file, so the background applies to all windows when enabled.
-
-## Release Notes
-
-See [CHANGELOG.md](CHANGELOG.md) for the full change history.
+| `backgroundImage.activeTheme` | `string` | `"none"` | The currently active theme (`none`, `minecraft`, or `subwaysurfers`). |
+| `backgroundImage.opacity` | `number` | `0.15` | The visual opacity level (0.05 to 0.25). |
 
 ---
 
-**Enjoy your parkour-powered coding environment! 🎮**
+**Enjoy your immersive parkour-powered coding environment! 🎮**

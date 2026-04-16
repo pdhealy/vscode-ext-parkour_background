@@ -3,9 +3,10 @@ import * as fs from 'fs';
 import * as path from 'path';
 import * as crypto from 'crypto';
 import * as os from 'os';
-import { getWorkbenchHtmlPaths } from '../utils/paths';
+import { getWorkbenchHtmlPaths, getProductJsonPath, getAppOutDir } from '../utils/paths';
 import { INJECTION_START, INJECTION_END } from '../utils/css';
 import { writeFileElevated } from '../utils/fs';
+import { removeInjection, injectCss } from '../utils/patcherUtils';
 
 function permissionFixInstructions(): string {
     if (process.platform === 'win32') {
@@ -18,7 +19,8 @@ function permissionFixInstructions(): string {
 }
 
 async function updateProductJsonChecksum(htmlPath: string): Promise<boolean> {
-    const productPath = path.resolve(path.dirname(htmlPath), '..', '..', '..', '..', '..', 'product.json');
+    const appRoot = vscode.env.appRoot;
+    const productPath = getProductJsonPath(appRoot);
 
     try {
         const htmlData = await fs.promises.readFile(htmlPath);
@@ -27,7 +29,7 @@ async function updateProductJsonChecksum(htmlPath: string): Promise<boolean> {
 
         if (!product.checksums) { return true; }
 
-        const appOutDir = path.resolve(path.dirname(htmlPath), '..', '..', '..', '..', '..', 'out');
+        const appOutDir = getAppOutDir(appRoot);
         const key = path.relative(appOutDir, htmlPath).split(path.sep).join('/');
 
         if (product.checksums[key] === checksum) { return true; }
@@ -37,17 +39,29 @@ async function updateProductJsonChecksum(htmlPath: string): Promise<boolean> {
 
         await writeFileElevated(productPath, newContent);
         return true;
-    } catch {
+    } catch (err) {
+        console.error('Parkour Background: Failed to update product.json checksum.', err);
         return false;
     }
 }
 
 const LOCK_FILE = path.join(os.tmpdir(), 'vscode-parkour-background.lock');
+const LOCK_TIMEOUT_MS = 10000; // 10 seconds
 
 async function acquireLock(timeoutMs = 5000): Promise<boolean> {
     const start = Date.now();
     while (Date.now() - start < timeoutMs) {
         try {
+            // Check if lock file is stale
+            try {
+                const stats = await fs.promises.stat(LOCK_FILE);
+                if (Date.now() - stats.mtimeMs > LOCK_TIMEOUT_MS) {
+                    await fs.promises.unlink(LOCK_FILE);
+                }
+            } catch (err: any) {
+                if (err.code !== 'ENOENT') { throw err; }
+            }
+
             const fd = await fs.promises.open(LOCK_FILE, 'wx');
             await fd.close();
             return true;
@@ -108,25 +122,19 @@ async function _patchWorkbenchInternal(context: vscode.ExtensionContext, css: st
         return;
     }
 
-    const startIdx = html.indexOf(INJECTION_START);
-    const endIdx = html.indexOf(INJECTION_END);
-    const alreadyInjected = startIdx !== -1 && endIdx !== -1;
-    if (alreadyInjected) {
-        html = html.slice(0, startIdx).trimEnd() + '\n\t' + html.slice(endIdx + INJECTION_END.length).trimStart();
-    }
-
+    const alreadyInjected = html.indexOf(INJECTION_START) !== -1 && html.indexOf(INJECTION_END) !== -1;
+    
+    let newHtml: string;
     if (css !== null) {
-        // Skip re-injection on startup if the injection is already present and matches? 
-        // Actually, just always re-inject to be safe if not silent.
         if (alreadyInjected && silent) { return; }
-
-        html = html.replace('</head>', `${css}\n\t</head>`);
+        newHtml = injectCss(html, css);
     } else {
         if (!alreadyInjected) { return; }
+        newHtml = removeInjection(html);
     }
 
     try {
-        await writeFileElevated(htmlPath, html);
+        await writeFileElevated(htmlPath, newHtml);
     } catch (err: unknown) {
         if (!silent) {
             const code = (err as NodeJS.ErrnoException).code;

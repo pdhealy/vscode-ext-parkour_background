@@ -56,6 +56,10 @@
       {
         "command": "backgroundImage.setOpacity",
         "title": "Parkour Background: Set Opacity"
+      },
+      {
+        "command": "backgroundImage.uninstall",
+        "title": "Parkour Background: Uninstall"
       }
     ],
     "configuration": {
@@ -70,6 +74,13 @@
           ],
           "default": "none",
           "description": "The active background image theme. Set to 'minecraft' or 'subwaysurfers' to enable, 'none' to disable."
+        },
+        "backgroundImage.opacity": {
+          "type": "number",
+          "default": 0.15,
+          "minimum": 0.05,
+          "maximum": 0.25,
+          "description": "The opacity of the background image (0.05 to 0.25)."
         }
       }
     },
