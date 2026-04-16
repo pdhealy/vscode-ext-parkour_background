@@ -2,10 +2,12 @@ import * as vscode from 'vscode';
 import * as fs from 'fs';
 import * as path from 'path';
 import { patchWorkbench } from './core/patcher';
-import { buildCss } from './utils/css';
+import { buildCss, STYLE_ID } from './utils/css';
 
 const CONFIG_KEY = 'backgroundImage.activeTheme';
 
+// True only in the window that ran a toggle command — prevents other windows
+// from patching workbench.html and reloading when the global config changes.
 export let _localConfigChange = false;
 
 export function _setLocalConfigChangeForTest(value: boolean) {
@@ -15,35 +17,6 @@ export function _setLocalConfigChangeForTest(value: boolean) {
 function updateMenuContext(minecraftEnabled: boolean, subwayEnabled: boolean): void {
     vscode.commands.executeCommand('setContext', 'backgroundImage.minecraftEnabled', minecraftEnabled);
     vscode.commands.executeCommand('setContext', 'backgroundImage.subwaySurfersEnabled', subwayEnabled);
-}
-
-function getWindowId(context: vscode.ExtensionContext): string {
-    let id = context.workspaceState.get<string>('parkour.windowId');
-    if (!id) {
-        id = Math.floor(Math.random() * 255).toString(16).padStart(2, '0');
-        context.workspaceState.update('parkour.windowId', id);
-    }
-    return id;
-}
-
-async function updateStateFile(context: vscode.ExtensionContext, id: string, css: string | null) {
-    const statePath = path.join(context.extensionUri.fsPath, 'parkour-state.json');
-    let state: any = {};
-    try {
-        if (fs.existsSync(statePath)) {
-            state = JSON.parse(await fs.promises.readFile(statePath, 'utf8'));
-        }
-    } catch (e) {
-        // Ignore file not found or JSON parse errors
-    }
-    
-    if (css) {
-        state[id] = css;
-    } else {
-        delete state[id];
-    }
-    
-    await fs.promises.writeFile(statePath, JSON.stringify(state), 'utf8');
 }
 
 async function getRandomWebpFromFolder(folderPath: string): Promise<string | null> {
@@ -57,37 +30,22 @@ async function getRandomWebpFromFolder(folderPath: string): Promise<string | nul
     }
 }
 
-async function applyThemeForWindow(context: vscode.ExtensionContext, theme: string) {
-    const id = getWindowId(context);
-    const workbenchConfig = vscode.workspace.getConfiguration('workbench');
-    const colorCustomizations = { ...(workbenchConfig.get<any>('colorCustomizations') || {}) };
-
-    const target = vscode.workspace.workspaceFolders && vscode.workspace.workspaceFolders.length > 0 
-        ? vscode.ConfigurationTarget.Workspace 
-        : vscode.ConfigurationTarget.Global;
-
+async function applyThemeForWindow(context: vscode.ExtensionContext, theme: string, silent = false) {
     if (theme === 'minecraft' || theme === 'subwaysurfers') {
         const folderPath = path.join(context.extensionUri.fsPath, 'assets', theme);
         const imagePath = await getRandomWebpFromFolder(folderPath);
         if (!imagePath) {
-            vscode.window.showErrorMessage(`Parkour Background: No images found for the ${theme} theme.`);
+            if (!silent) {
+                vscode.window.showErrorMessage(`Parkour Background: No images found for the ${theme} theme.`);
+            }
             return;
         }
         
         const opacity = context.globalState.get<number>('backgroundImage.opacity', 0.15);
         const css = await buildCss(imagePath, Math.min(0.25, Math.max(0.05, opacity)));
-        await updateStateFile(context, id, css);
-        
-        colorCustomizations['scrollbar.shadow'] = `#0000${id}00`;
-        await workbenchConfig.update('colorCustomizations', colorCustomizations, target);
-        await patchWorkbench(context, true, true);
+        await patchWorkbench(context, css, silent);
     } else {
-        await updateStateFile(context, id, null);
-        if (colorCustomizations['scrollbar.shadow']?.match(/#0000[0-9a-fA-F]{2}00/)) {
-            delete colorCustomizations['scrollbar.shadow'];
-            await workbenchConfig.update('colorCustomizations', colorCustomizations, target);
-        }
-        await patchWorkbench(context, false, true);
+        await patchWorkbench(context, null, silent);
     }
 }
 
@@ -97,6 +55,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
         const config = vscode.workspace.getConfiguration('backgroundImage');
         const current = config.get<string>('activeTheme', 'none');
         _localConfigChange = true;
+        // Use Workspace target to isolate to current window/workspace if possible.
         const target = vscode.workspace.workspaceFolders && vscode.workspace.workspaceFolders.length > 0 
             ? vscode.ConfigurationTarget.Workspace 
             : vscode.ConfigurationTarget.Global;
@@ -122,7 +81,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
         if (!_localConfigChange) { return; }
         _localConfigChange = false;
 
-        await applyThemeForWindow(context, theme);
+        await applyThemeForWindow(context, theme, false);
     }));
 
     context.subscriptions.push(vscode.commands.registerCommand('backgroundImage.setOpacity', async () => {
@@ -145,20 +104,21 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
         await context.globalState.update('backgroundImage.opacity', picked.value);
         const theme = vscode.workspace.getConfiguration('backgroundImage').get<string>('activeTheme', 'none');
         if (theme === 'minecraft' || theme === 'subwaysurfers') {
-            await applyThemeForWindow(context, theme);
+            await applyThemeForWindow(context, theme, false);
         }
     }));
 
+    // Re-apply or remove theme on startup.
     const config = vscode.workspace.getConfiguration('backgroundImage');
     const theme = config.get<string>('activeTheme', 'none');
     updateMenuContext(theme === 'minecraft', theme === 'subwaysurfers');
-    if (theme === 'minecraft' || theme === 'subwaysurfers') {
-        await applyThemeForWindow(context, theme);
-    } else {
-        await patchWorkbench(context, false, true);
-    }
+    
+    // Check if workbench.html already has an injection.
+    // If we are in a window where theme is 'none' but workbench.html has an injection,
+    // it means another window (Window A) enabled it globally. We should remove it 
+    // for this window (Window B) to fix Bug 3.
+    await applyThemeForWindow(context, theme, true);
 }
 
 export function deactivate(): void {
-}void {
 }

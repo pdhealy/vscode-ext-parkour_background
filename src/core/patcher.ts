@@ -69,7 +69,7 @@ async function releaseLock(): Promise<void> {
     }
 }
 
-export async function patchWorkbench(context: vscode.ExtensionContext, install: boolean, silent = false): Promise<void> {
+export async function patchWorkbench(context: vscode.ExtensionContext, css: string | null, silent = false): Promise<void> {
     if (!(await acquireLock())) {
         if (!silent) {
             vscode.window.showErrorMessage('Parkour Background: Could not acquire lock to patch workbench. Try again.');
@@ -78,13 +78,13 @@ export async function patchWorkbench(context: vscode.ExtensionContext, install: 
     }
 
     try {
-        await _patchWorkbenchInternal(context, install, silent);
+        await _patchWorkbenchInternal(context, css, silent);
     } finally {
         await releaseLock();
     }
 }
 
-async function _patchWorkbenchInternal(context: vscode.ExtensionContext, install: boolean, silent = false): Promise<void> {
+async function _patchWorkbenchInternal(context: vscode.ExtensionContext, css: string | null, silent = false): Promise<void> {
     const paths = getWorkbenchHtmlPaths(vscode.env.appRoot);
     if (paths.length === 0) {
         if (!silent) {
@@ -115,49 +115,12 @@ async function _patchWorkbenchInternal(context: vscode.ExtensionContext, install
         html = html.slice(0, startIdx).trimEnd() + '\n\t' + html.slice(endIdx + INJECTION_END.length).trimStart();
     }
 
-    if (install) {
+    if (css !== null) {
+        // Skip re-injection on startup if the injection is already present and matches? 
+        // Actually, just always re-inject to be safe if not silent.
         if (alreadyInjected && silent) { return; }
 
-        const baseUri = context.extensionUri.toString().replace('file://', 'vscode-file://vscode-app');
-        const scriptContent = `
-        const applyParkourBackground = async () => {
-            const bodyStyle = getComputedStyle(document.body);
-            const shadowColor = bodyStyle.getPropertyValue('--vscode-scrollbar-shadow').trim();
-            const match = shadowColor.match(/#0000([0-9a-fA-F]{2})00/i);
-            if (match) {
-                const id = match[1].toLowerCase();
-                const stateUrl = '${baseUri}/parkour-state.json?t=' + Date.now();
-                try {
-                    const r = await fetch(stateUrl);
-                    const state = await r.json();
-                    const css = state[id];
-                    let styleEl = document.getElementById('parkour-dynamic-style');
-                    if (css) {
-                        if (!styleEl) {
-                            styleEl = document.createElement('style');
-                            styleEl.id = 'parkour-dynamic-style';
-                            document.head.appendChild(styleEl);
-                        }
-                        styleEl.textContent = css;
-                    } else if (styleEl) {
-                        styleEl.remove();
-                    }
-                } catch (e) {
-                    console.error('Parkour Background: Failed to load state', e);
-                    const styleEl = document.getElementById('parkour-dynamic-style');
-                    if (styleEl) styleEl.remove();
-                }
-            } else {
-                const styleEl = document.getElementById('parkour-dynamic-style');
-                if (styleEl) styleEl.remove();
-            }
-        };
-        setInterval(applyParkourBackground, 1000);
-        setTimeout(applyParkourBackground, 100);
-        `;
-
-        const jsInjection = `${INJECTION_START}\n\t${scriptContent}\n\t${INJECTION_END}`;
-        html = html.replace('</head>', `${jsInjection}\n\t</head>`);
+        html = html.replace('</head>', `${css}\n\t</head>`);
     } else {
         if (!alreadyInjected) { return; }
     }
@@ -200,8 +163,8 @@ async function _patchWorkbenchInternal(context: vscode.ExtensionContext, install
     }
 
     if (!silent) {
-        const state = install ? 'enabled' : 'disabled';
-        vscode.window.showInformationMessage(`Parkour Background script ${state}. Reloading VS Code...`);
+        const state = css !== null ? 'enabled' : 'disabled';
+        vscode.window.showInformationMessage(`Parkour Background ${state}. Reloading VS Code...`);
         setTimeout(() => vscode.commands.executeCommand('workbench.action.reloadWindow'), 1000);
     }
 }
