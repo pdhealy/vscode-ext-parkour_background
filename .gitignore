@@ -1,15 +1,13 @@
 # Compiled output
 out/
-
-# Documentation
-docs/
-.planning/
+*.tsbuildinfo
 
 # Dependencies
 node_modules/
 
 # VS Code test infrastructure
 .vscode-test/
+.vscode-test-compile/
 
 # Packaged extension
 *.vsix
@@ -26,10 +24,15 @@ Thumbs.db
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
+v8.log
 
 # Env files
 .env
 .env.*
+
+# AI/Assistant Configs
+.claude/
+.gemini/
 
 # Temporary files
 assets/tmp/

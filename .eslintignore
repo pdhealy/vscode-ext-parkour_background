@@ -1,0 +1,12 @@
+out/
+node_modules/
+.vscode-test/
+*.vsix
+*.map
+*.tsbuildinfo
+*.log
+docs/
+.planning/
+.claude/
+.gemini/
+assets/tmp/

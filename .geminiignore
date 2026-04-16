@@ -1,0 +1,13 @@
+.git/
+node_modules/
+out/
+.vscode-test/
+.vscode/
+.claude/
+.gemini/logs/
+.gemini/tmp/
+*.vsix
+*.map
+*.tsbuildinfo
+*.log
+assets/tmp/
