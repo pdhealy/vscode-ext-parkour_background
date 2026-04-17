@@ -88,8 +88,8 @@ suite('Background Image Extension Tests', () => {
 
     test('extension activates and registers all three commands', async () => {
         const commands = await vscode.commands.getCommands(true);
-        assert.ok(commands.includes('backgroundImage.toggleMinecraft'),     'toggleMinecraft command must be registered');
-        assert.ok(commands.includes('backgroundImage.toggleSubwaySurfers'), 'toggleSubwaySurfers command must be registered');
+        assert.ok(commands.includes('backgroundImage.on'),     'on command must be registered');
+        assert.ok(commands.includes('backgroundImage.off'), 'off command must be registered');
         assert.ok(commands.includes('backgroundImage.setOpacity'),          'setOpacity command must be registered');
     });
 
@@ -98,9 +98,10 @@ suite('Background Image Extension Tests', () => {
         assert.strictEqual(value, 'none', 'Default activeTheme should be "none"');
     });
 
-    test('toggleMinecraft command enables minecraft theme when currently none', async () => {
+    test('on command enables minecraft theme when currently none', async () => {
         const { readStub, writeStub } = stubFsSuccess(sandbox);
-        await vscode.commands.executeCommand('backgroundImage.toggleMinecraft');
+        sandbox.stub(vscode.window, 'showQuickPick').resolves('Minecraft' as any);
+        await vscode.commands.executeCommand('backgroundImage.on');
         await new Promise(resolve => setTimeout(resolve, 300));
         const theme = vscode.workspace.getConfiguration('backgroundImage').get<string>('activeTheme');
         assert.strictEqual(theme, 'minecraft', 'activeTheme should become "minecraft"');
@@ -110,7 +111,7 @@ suite('Background Image Extension Tests', () => {
         writeStub.restore();
     });
 
-    test('toggleMinecraft command disables minecraft theme when currently minecraft', async () => {
+    test('off command disables theme when currently minecraft', async () => {
         const { readStub, writeStub } = stubFsSuccess(sandbox);
         // Turn it on first
         _setLocalConfigChangeForTest(true);
@@ -118,7 +119,7 @@ suite('Background Image Extension Tests', () => {
         await new Promise(resolve => setTimeout(resolve, 300));
         
         // Now toggle it off
-        await vscode.commands.executeCommand('backgroundImage.toggleMinecraft');
+        await vscode.commands.executeCommand('backgroundImage.off');
         await new Promise(resolve => setTimeout(resolve, 300));
         
         const theme = vscode.workspace.getConfiguration('backgroundImage').get<string>('activeTheme');
@@ -127,9 +128,10 @@ suite('Background Image Extension Tests', () => {
         writeStub.restore();
     });
 
-    test('toggleSubwaySurfers command enables subwaysurfers theme when currently none', async () => {
+    test('on command enables subwaysurfers theme when currently none', async () => {
         const { readStub, writeStub } = stubFsSuccess(sandbox);
-        await vscode.commands.executeCommand('backgroundImage.toggleSubwaySurfers');
+        sandbox.stub(vscode.window, 'showQuickPick').resolves('Subway Surfers' as any);
+        await vscode.commands.executeCommand('backgroundImage.on');
         await new Promise(resolve => setTimeout(resolve, 300));
         const theme = vscode.workspace.getConfiguration('backgroundImage').get<string>('activeTheme');
         assert.strictEqual(theme, 'subwaysurfers', 'activeTheme should become "subwaysurfers"');
@@ -139,7 +141,7 @@ suite('Background Image Extension Tests', () => {
         writeStub.restore();
     });
 
-    test('toggleSubwaySurfers command disables subwaysurfers theme when currently subwaysurfers', async () => {
+    test('off command disables theme when currently subwaysurfers', async () => {
         const { readStub, writeStub } = stubFsSuccess(sandbox);
         // Turn it on first
         _setLocalConfigChangeForTest(true);
@@ -147,7 +149,7 @@ suite('Background Image Extension Tests', () => {
         await new Promise(resolve => setTimeout(resolve, 300));
         
         // Now toggle it off
-        await vscode.commands.executeCommand('backgroundImage.toggleSubwaySurfers');
+        await vscode.commands.executeCommand('backgroundImage.off');
         await new Promise(resolve => setTimeout(resolve, 300));
         
         const theme = vscode.workspace.getConfiguration('backgroundImage').get<string>('activeTheme');
@@ -156,7 +158,7 @@ suite('Background Image Extension Tests', () => {
         writeStub.restore();
     });
 
-    test('toggleSubwaySurfers switches from minecraft to subwaysurfers', async () => {
+    test('on command switches from minecraft to subwaysurfers', async () => {
         const { readStub, writeStub } = stubFsSuccess(sandbox);
         // Start with minecraft
         _setLocalConfigChangeForTest(true);
@@ -164,7 +166,8 @@ suite('Background Image Extension Tests', () => {
         await new Promise(resolve => setTimeout(resolve, 300));
         
         // Toggle subway surfers
-        await vscode.commands.executeCommand('backgroundImage.toggleSubwaySurfers');
+        sandbox.stub(vscode.window, 'showQuickPick').resolves('Subway Surfers' as any);
+        await vscode.commands.executeCommand('backgroundImage.on');
         await new Promise(resolve => setTimeout(resolve, 300));
         
         const theme = vscode.workspace.getConfiguration('backgroundImage').get<string>('activeTheme');
@@ -173,7 +176,7 @@ suite('Background Image Extension Tests', () => {
         writeStub.restore();
     });
 
-    test('toggleMinecraft switches from subwaysurfers to minecraft', async () => {
+    test('on command switches from subwaysurfers to minecraft', async () => {
         const { readStub, writeStub } = stubFsSuccess(sandbox);
         // Start with subway surfers
         _setLocalConfigChangeForTest(true);
@@ -181,7 +184,8 @@ suite('Background Image Extension Tests', () => {
         await new Promise(resolve => setTimeout(resolve, 300));
         
         // Toggle minecraft
-        await vscode.commands.executeCommand('backgroundImage.toggleMinecraft');
+        sandbox.stub(vscode.window, 'showQuickPick').resolves('Minecraft' as any);
+        await vscode.commands.executeCommand('backgroundImage.on');
         await new Promise(resolve => setTimeout(resolve, 300));
         
         const theme = vscode.workspace.getConfiguration('backgroundImage').get<string>('activeTheme');

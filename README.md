@@ -26,13 +26,13 @@ Parkour Background is designed for developers who enjoy the "vibes" of parkour g
 
 1. Install **Parkour Background** from the [VS Code Marketplace](https://marketplace.visualstudio.com).
 2. Open the **Command Palette** (`Ctrl+Shift+P` / `Cmd+Shift+P`).
-3. Search for `Parkour Background (Minecraft): Toggle On/Off` or `Parkour Background (Subway Surfers): Toggle On/Off` to activate.
+3. Search for `Parkour Background: On` or `Parkour Background: Off` to activate or deactivate the background.
 
 ## Usage
 
 ### Toggling Visuals
 You can enable or disable the visuals using two methods:
-1. **Command Palette:** Search for the "Toggle On/Off" commands.
+1. **Command Palette:** Search for the "Parkour Background: On" or "Parkour Background: Off" commands.
 2. **Editor Context Menu:** Right-click anywhere inside the editor text area and select the "Enable/Disable" options.
 
 *Note: VS Code will automatically reload to apply the changes after toggling.*
@@ -71,7 +71,7 @@ This extension patches VS Code's `workbench.html` file to inject the required CS
 | Setting | Type | Default | Description |
 |---------|------|---------|-------------|
 | `backgroundImage.activeTheme` | `string` | `"none"` | The currently active theme (`none`, `minecraft`, or `subwaysurfers`). |
-| `backgroundImage.opacity` | `number` | `0.15` | The visual opacity level (0.05 to 0.25). |
+| `backgroundImage.opacity` | `number` | `0.1` | The visual opacity level (0.05 to 0.25). |
 
 ---
 

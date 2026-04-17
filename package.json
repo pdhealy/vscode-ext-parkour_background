@@ -46,12 +46,12 @@
   "contributes": {
     "commands": [
       {
-        "command": "backgroundImage.toggleMinecraft",
-        "title": "Parkour Background (Minecraft): Toggle On/Off"
+        "command": "backgroundImage.on",
+        "title": "Parkour Background: On"
       },
       {
-        "command": "backgroundImage.toggleSubwaySurfers",
-        "title": "Parkour Background (Subway Surfers): Toggle On/Off"
+        "command": "backgroundImage.off",
+        "title": "Parkour Background: Off"
       },
       {
         "command": "backgroundImage.setOpacity",
@@ -77,7 +77,7 @@
         },
         "backgroundImage.opacity": {
           "type": "number",
-          "default": 0.15,
+          "default": 0.1,
           "minimum": 0.05,
           "maximum": 0.25,
           "description": "The opacity of the background image (0.05 to 0.25)."
@@ -87,28 +87,16 @@
     "menus": {
       "editor/context": [
         {
-          "command": "backgroundImage.toggleMinecraft",
-          "when": "!backgroundImage.minecraftEnabled",
+          "command": "backgroundImage.on",
+          "when": "!backgroundImage.enabled",
           "group": "navigation",
-          "title": "Enable Parkour Background (Minecraft)"
+          "title": "Enable Parkour Background"
         },
         {
-          "command": "backgroundImage.toggleMinecraft",
-          "when": "backgroundImage.minecraftEnabled",
+          "command": "backgroundImage.off",
+          "when": "backgroundImage.enabled",
           "group": "navigation",
-          "title": "Disable Parkour Background (Minecraft)"
-        },
-        {
-          "command": "backgroundImage.toggleSubwaySurfers",
-          "when": "!backgroundImage.subwaySurfersEnabled",
-          "group": "navigation",
-          "title": "Enable Parkour Background (Subway Surfers)"
-        },
-        {
-          "command": "backgroundImage.toggleSubwaySurfers",
-          "when": "backgroundImage.subwaySurfersEnabled",
-          "group": "navigation",
-          "title": "Disable Parkour Background (Subway Surfers)"
+          "title": "Disable Parkour Background"
         }
       ]
     }
